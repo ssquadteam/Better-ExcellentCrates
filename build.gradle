@@ -1,0 +1,88 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+    id 'com.gradleup.shadow' version '9.0.0'
+}
+
+group = 'su.nightexpress.excellentcrates'
+version = '6.3.4'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    withSourcesJar()
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        name = 'spigot-repo'
+        url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
+    }
+    maven {
+        name = 'nightexpress-releases'
+        url = 'https://repo.nightexpressdev.com/releases'
+    }
+    maven {
+        name = 'dmulloy2-repo'
+        url = 'https://repo.dmulloy2.net/repository/public/'
+    }
+    maven {
+        name = 'jitpack'
+        url = 'https://jitpack.io'
+    }
+    maven {
+        name = 'placeholderapi'
+        url = 'https://repo.extendedclip.com/content/repositories/placeholderapi/'
+    }
+    maven {
+        name = 'codemc-repo'
+        url = 'https://repo.codemc.io/repository/maven-public/'
+    }
+}
+
+dependencies {
+    compileOnly 'org.spigotmc:spigot-api:1.21.4-R0.1-SNAPSHOT'
+    
+    implementation 'su.nightexpress.nightcore:main:2.7.12'
+    implementation 'su.nightexpress.economybridge:economy-bridge:1.2.1'
+    
+    compileOnly 'com.comphenix.protocol:ProtocolLib:5.3.0'
+    compileOnly 'com.github.retrooper:packetevents-spigot:2.9.0'
+    compileOnly 'me.clip:placeholderapi:2.11.6'
+    
+    implementation 'redis.clients:jedis:5.1.4'
+    implementation 'org.apache.commons:commons-pool2:2.11.1'
+}
+
+processResources {
+    filteringCharset = 'UTF-8'
+    filesMatching('**/*.yml') {
+        expand(project.properties)
+    }
+}
+
+shadowJar {
+    archiveClassifier = ''
+
+    relocate 'redis.clients', 'su.nightexpress.excellentcrates.lib.redis'
+    relocate 'org.apache.commons.pool2', 'su.nightexpress.excellentcrates.lib.commons.pool2'
+}
+
+build {
+    dependsOn shadowJar
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+        maven {
+            name = 'nightexpress'
+            url = 'https://repo.nightexpressdev.com/releases'
+        }
+    }
+}

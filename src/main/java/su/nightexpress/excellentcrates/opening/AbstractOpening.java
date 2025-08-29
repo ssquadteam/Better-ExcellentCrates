@@ -109,6 +109,7 @@ public abstract class AbstractOpening implements Opening {
             userData.addOpenings(1);
             globalData.setLatestOpener(this.player);
             globalData.setSaveRequired(true);
+            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishCrateData(globalData));
 
             if (crate.hasOpenCooldown() && !crate.hasCooldownBypassPermission(player)) {
                 userData.setCooldown(crate.getOpenCooldown());
@@ -123,6 +124,7 @@ public abstract class AbstractOpening implements Opening {
             }
 
             this.plugin.getUserManager().save(user);
+            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
         }
 
         this.plugin.getOpeningManager().removeOpening(this.getPlayer());

@@ -221,6 +221,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
         });
         user.cleanKeysOnHold();
         this.plugin.getUserManager().save(user);
+        this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
     }
 
     public void setKey(@NotNull CrateUser user, @NotNull CrateKey key, int amount) {
@@ -240,6 +241,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
             CrateUser user = plugin.getUserManager().getOrFetch(player);
             user.setKeys(key.getId(), amount);
             plugin.getUserManager().save(user);
+            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
         }
         else {
             ItemStack keyItem = key.getItem();
@@ -274,6 +276,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
             CrateUser user = plugin.getUserManager().getOrFetch(player);
             user.addKeys(key.getId(), amount);
             plugin.getUserManager().save(user);
+            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
         }
         else {
             ItemStack keyItem = key.getItem();
@@ -308,6 +311,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
             CrateUser user = plugin.getUserManager().getOrFetch(player);
             user.takeKeys(key.getId(), amount);
             plugin.getUserManager().save(user);
+            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
         }
         else {
             Predicate<ItemStack> predicate = this.getItemStackPredicate(key);

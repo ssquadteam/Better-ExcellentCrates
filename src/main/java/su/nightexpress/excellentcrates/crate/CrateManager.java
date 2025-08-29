@@ -510,6 +510,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
 
         globalData.setLatestReward(reward);
         globalData.setSaveRequired(true);
+        this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishCrateData(globalData));
 
         Lang.CRATE_OPEN_REWARD_INFO.getMessage().send(player, replacer -> replacer
             .replace(crate.replacePlaceholders())
@@ -574,6 +575,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
             limit.addRoll(1);
             limit.updateResetTime(reward.getGlobalLimits());
             limit.setSaveRequired(true);
+            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimit(limit));
         }
 
         if (reward.hasPersonalLimit()) {
@@ -583,6 +585,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
             limit.addRoll(1);
             limit.updateResetTime(reward.getPlayerLimits());
             limit.setSaveRequired(true);
+            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimit(limit));
         }
     }
 

@@ -1,0 +1,344 @@
+package su.nightexpress.excellentcrates.sync;
+
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
+import com.google.gson.reflect.TypeToken;
+import org.jetbrains.annotations.NotNull;
+import redis.clients.jedis.DefaultJedisClientConfig;
+import redis.clients.jedis.HostAndPort;
+import redis.clients.jedis.Jedis;
+import redis.clients.jedis.JedisPool;
+import redis.clients.jedis.JedisPubSub;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
+import su.nightexpress.excellentcrates.CratesPlugin;
+import su.nightexpress.excellentcrates.config.Config;
+import su.nightexpress.excellentcrates.data.crate.GlobalCrateData;
+import su.nightexpress.excellentcrates.data.crate.UserCrateData;
+import su.nightexpress.excellentcrates.data.reward.RewardLimit;
+import su.nightexpress.excellentcrates.data.serialize.UserCrateDataSerializer;
+import su.nightexpress.excellentcrates.user.CrateUser;
+
+import java.lang.reflect.Type;
+import java.util.Map;
+import java.util.UUID;
+
+public class RedisSyncManager {
+
+    private final CratesPlugin plugin;
+    private JedisPool pool;
+    private JedisPubSub subscriber;
+    private Thread subscriberThread;
+
+    private final Gson gson;
+    private final String nodeId;
+    private String channel;
+    private volatile boolean active;
+
+    public RedisSyncManager(@NotNull CratesPlugin plugin) {
+        this.plugin = plugin;
+        this.gson = new GsonBuilder()
+            .registerTypeAdapter(UserCrateData.class, new UserCrateDataSerializer())
+            .create();
+
+        String nid = Config.REDIS_NODE_ID.get();
+        if (nid == null || nid.isBlank()) {
+            nid = UUID.randomUUID().toString();
+        }
+        this.nodeId = nid;
+    }
+
+    public void setup() {
+        if (!Config.REDIS_ENABLED.get()) {
+            return;
+        }
+        String host = Config.REDIS_HOST.get();
+        int port = Config.REDIS_PORT.get();
+        String password = Config.REDIS_PASSWORD.get();
+        boolean ssl = Config.REDIS_SSL.get();
+        this.channel = Config.REDIS_CHANNEL.get();
+
+        try {
+            DefaultJedisClientConfig clientConfig = DefaultJedisClientConfig.builder()
+                .password((password == null || password.isEmpty()) ? null : password)
+                .ssl(ssl)
+                .build();
+
+            this.pool = new JedisPool(new GenericObjectPoolConfig<>(), new HostAndPort(host, port), clientConfig);
+            this.active = true;
+            this.startSubscriber();
+
+            this.plugin.info("Redis sync enabled. Channel: " + this.channel + " | NodeId: " + this.nodeId);
+        }
+        catch (Exception e) {
+            this.plugin.error("Failed to initialize Redis: " + e.getMessage());
+            this.active = false;
+        }
+    }
+
+    public void shutdown() {
+        this.active = false;
+        try {
+            if (this.subscriber != null) {
+                this.subscriber.unsubscribe();
+            }
+        }
+        catch (Exception ignored) {}
+        try {
+            if (this.pool != null) this.pool.close();
+        }
+        catch (Exception ignored) {}
+    }
+
+    public boolean isActive() {
+        return this.pool != null && this.active;
+    }
+
+    @NotNull
+    public String getNodeId() {
+        return this.nodeId;
+    }
+
+    /* =========================
+       Publisher API
+       ========================= */
+
+    public void publishUser(@NotNull CrateUser user) {
+        if (!isActive()) return;
+
+        JsonObject data = new JsonObject();
+        data.addProperty("id", user.getId().toString());
+        data.add("keys", gson.toJsonTree(user.getKeysMap()));
+        data.add("crateData", gson.toJsonTree(user.getCrateDataMap()));
+
+        publish("USER_UPDATE", data);
+    }
+
+    public void publishCrateData(@NotNull GlobalCrateData data) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("crateId", data.getCrateId());
+        d.addProperty("latestOpenerId", data.getLatestOpenerId() == null ? "" : data.getLatestOpenerId().toString());
+        d.addProperty("latestOpenerName", data.getLatestOpenerName());
+        d.addProperty("latestRewardId", data.getLatestRewardId());
+
+        publish("CRATE_DATA_UPSERT", d);
+    }
+
+    public void publishCrateDataDelete(@NotNull String crateId) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("crateId", crateId);
+
+        publish("CRATE_DATA_DELETE", d);
+    }
+
+    public void publishRewardLimit(@NotNull RewardLimit limit) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("crateId", limit.getCrateId());
+        d.addProperty("rewardId", limit.getRewardId());
+        d.addProperty("holder", limit.getHolder());
+        d.addProperty("amount", limit.getAmount());
+        d.addProperty("resetDate", limit.getResetDate());
+
+        publish("REWARD_LIMIT_UPSERT", d);
+    }
+
+    public void publishRewardLimitDeleteSingle(@NotNull String holder, @NotNull String crateId, @NotNull String rewardId) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("mode", "single");
+        d.addProperty("holder", holder);
+        d.addProperty("crateId", crateId);
+        d.addProperty("rewardId", rewardId);
+
+        publish("REWARD_LIMIT_DELETE", d);
+    }
+
+    public void publishRewardLimitDeleteByCrate(@NotNull String crateId) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("mode", "by_crate");
+        d.addProperty("crateId", crateId);
+
+        publish("REWARD_LIMIT_DELETE", d);
+    }
+
+    public void publishRewardLimitDeleteByReward(@NotNull String crateId, @NotNull String rewardId) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("mode", "by_reward");
+        d.addProperty("crateId", crateId);
+        d.addProperty("rewardId", rewardId);
+
+        publish("REWARD_LIMIT_DELETE", d);
+    }
+
+    public void publishRewardLimitDeleteByHolder(@NotNull String holder) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("mode", "by_holder");
+        d.addProperty("holder", holder);
+
+        publish("REWARD_LIMIT_DELETE", d);
+    }
+
+    private void publish(@NotNull String type, @NotNull JsonObject data) {
+        if (!isActive()) return;
+
+        JsonObject root = new JsonObject();
+        root.addProperty("type", type);
+        root.addProperty("nodeId", this.nodeId);
+        root.add("data", data);
+
+        try (Jedis jedis = this.pool.getResource()) {
+            jedis.publish(this.channel, this.gson.toJson(root));
+        }
+        catch (Exception e) {
+            this.plugin.warn("Redis publish failed: " + e.getMessage());
+        }
+    }
+
+    /* =========================
+       Subscriber
+       ========================= */
+
+    private void startSubscriber() {
+        this.subscriber = new JedisPubSub() {
+            @Override
+            public void onMessage(String channel, String message) {
+                handleIncoming(message);
+            }
+        };
+
+        this.subscriberThread = new Thread(() -> {
+            try (Jedis jedis = this.pool.getResource()) {
+                jedis.subscribe(this.subscriber, this.channel);
+            }
+            catch (Exception e) {
+                this.plugin.error("Redis subscriber error: " + e.getMessage());
+            }
+            finally {
+                this.active = false;
+            }
+        }, "ExcellentCrates-RedisSubscriber");
+
+        this.subscriberThread.setDaemon(true);
+        this.subscriberThread.start();
+    }
+
+    private void handleIncoming(@NotNull String message) {
+        try {
+            JsonObject root = this.gson.fromJson(message, JsonObject.class);
+            if (root == null) return;
+
+            String origin = root.has("nodeId") && !root.get("nodeId").isJsonNull() ? root.get("nodeId").getAsString() : null;
+            if (origin != null && origin.equals(this.nodeId)) return;
+
+            String type = root.has("type") ? root.get("type").getAsString() : null;
+            JsonObject data = root.has("data") && root.get("data").isJsonObject() ? root.getAsJsonObject("data") : null;
+            if (type == null || data == null) return;
+
+            switch (type) {
+                case "USER_UPDATE" -> applyUserUpdate(data);
+                case "CRATE_DATA_UPSERT" -> applyCrateDataUpsert(data);
+                case "CRATE_DATA_DELETE" -> applyCrateDataDelete(data);
+                case "REWARD_LIMIT_UPSERT" -> applyRewardLimitUpsert(data);
+                case "REWARD_LIMIT_DELETE" -> applyRewardLimitDelete(data);
+                default -> {}
+            }
+        }
+        catch (Exception e) {
+            this.plugin.warn("Failed to handle Redis message: " + e.getMessage());
+        }
+    }
+
+    private void applyUserUpdate(@NotNull JsonObject data) {
+        UUID id = UUID.fromString(data.get("id").getAsString());
+
+        Type mapSI = new TypeToken<Map<String, Integer>>() {}.getType();
+        Type mapSUserData = new TypeToken<Map<String, UserCrateData>>() {}.getType();
+
+        Map<String, Integer> keys = this.gson.fromJson(data.get("keys"), mapSI);
+        Map<String, UserCrateData> crates = this.gson.fromJson(data.get("crateData"), mapSUserData);
+
+        this.plugin.runTask(task -> {
+            for (CrateUser user : this.plugin.getUserManager().getLoaded()) {
+                if (user.getId().equals(id)) {
+                    user.getKeysMap().clear();
+                    if (keys != null) user.getKeysMap().putAll(keys);
+                    user.getCrateDataMap().clear();
+                    if (crates != null) user.getCrateDataMap().putAll(crates);
+                    break;
+                }
+            }
+        });
+    }
+
+    private void applyCrateDataUpsert(@NotNull JsonObject data) {
+        String crateId = data.get("crateId").getAsString();
+
+        String openerIdStr = data.has("latestOpenerId") ? data.get("latestOpenerId").getAsString() : "";
+        UUID openerId = (openerIdStr == null || openerIdStr.isEmpty()) ? null : UUID.fromString(openerIdStr);
+
+        String openerName = data.has("latestOpenerName") && !data.get("latestOpenerName").isJsonNull()
+            ? data.get("latestOpenerName").getAsString()
+            : null;
+
+        String rewardId = data.has("latestRewardId") && !data.get("latestRewardId").isJsonNull()
+            ? data.get("latestRewardId").getAsString()
+            : null;
+
+        GlobalCrateData crateData = new GlobalCrateData(crateId, openerId, openerName, rewardId);
+        this.plugin.runTask(task -> this.plugin.getDataManager().applyExternalCrateData(crateData));
+    }
+
+    private void applyCrateDataDelete(@NotNull JsonObject data) {
+        String crateId = data.get("crateId").getAsString();
+        this.plugin.runTask(task -> this.plugin.getDataManager().applyExternalDeleteCrateData(crateId));
+    }
+
+    private void applyRewardLimitUpsert(@NotNull JsonObject data) {
+        String crateId = data.get("crateId").getAsString();
+        String rewardId = data.get("rewardId").getAsString();
+        String holder = data.get("holder").getAsString();
+        int amount = data.get("amount").getAsInt();
+        long resetDate = data.get("resetDate").getAsLong();
+
+        RewardLimit limit = new RewardLimit(crateId, rewardId, holder, amount, resetDate);
+        this.plugin.runTask(task -> this.plugin.getDataManager().applyExternalRewardLimit(limit));
+    }
+
+    private void applyRewardLimitDelete(@NotNull JsonObject data) {
+        String mode = data.get("mode").getAsString();
+
+        this.plugin.runTask(task -> {
+            switch (mode) {
+                case "single" -> this.plugin.getDataManager().applyExternalDeleteRewardLimit(
+                    data.get("holder").getAsString(),
+                    data.get("crateId").getAsString(),
+                    data.get("rewardId").getAsString()
+                );
+                case "by_crate" -> this.plugin.getDataManager().applyExternalDeleteRewardLimitsByCrate(
+                    data.get("crateId").getAsString()
+                );
+                case "by_reward" -> this.plugin.getDataManager().applyExternalDeleteRewardLimitsByReward(
+                    data.get("crateId").getAsString(),
+                    data.get("rewardId").getAsString()
+                );
+                case "by_holder" -> this.plugin.getDataManager().applyExternalDeleteRewardLimitsByHolder(
+                    data.get("holder").getAsString()
+                );
+                default -> {}
+            }
+        });
+    }
+}

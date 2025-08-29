@@ -6,7 +6,7 @@
 
     <groupId>su.nightexpress.excellentcrates</groupId>
     <artifactId>ExcellentCrates</artifactId>
-    <version>6.3.3</version>
+    <version>6.3.4</version>
 
     <properties>
         <maven.compiler.source>21</maven.compiler.source>
@@ -98,6 +98,16 @@
             <version>2.11.6</version>
             <scope>provided</scope>
         </dependency>
+        <dependency>
+            <groupId>redis.clients</groupId>
+            <artifactId>jedis</artifactId>
+            <version>5.1.4</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+            <version>2.11.1</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -119,6 +129,32 @@
                         <goals>
                             <goal>jar</goal>
                         </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <minimizeJar>false</minimizeJar>
+                            <relocations>
+                                <relocation>
+                                    <pattern>redis.clients</pattern>
+                                    <shadedPattern>su.nightexpress.excellentcrates.lib.redis</shadedPattern>
+                                </relocation>
+                                <relocation>
+                                    <pattern>org.apache.commons.pool2</pattern>
+                                    <shadedPattern>su.nightexpress.excellentcrates.lib.commons.pool2</shadedPattern>
+                                </relocation>
+                            </relocations>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

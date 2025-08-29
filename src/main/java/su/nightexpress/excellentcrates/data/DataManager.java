@@ -64,6 +64,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
         if (dataSet.isEmpty()) return;
 
         this.plugin.getDataHandler().updateCrateDatas(dataSet);
+        this.plugin.getRedisSyncManager().ifPresent(sync -> dataSet.forEach(sync::publishCrateData));
         //this.plugin.debug("Saved " + dataSet.size() + " crate datas.");
     }
 
@@ -79,6 +80,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
         if (limits.isEmpty()) return;
 
         this.plugin.getDataHandler().updateRewardLimits(limits);
+        this.plugin.getRedisSyncManager().ifPresent(sync -> limits.forEach(sync::publishRewardLimit));
         //this.plugin.debug("Saved " + limits.size() + " reward limits.");
     }
 
@@ -169,6 +171,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
     public void deleteCrateData(@NotNull Crate crate) {
         this.plugin.runTaskAsync(task -> this.plugin.getDataHandler().deleteCrateData(crate));
         this.crateDataMap.remove(crate.getId());
+        this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishCrateDataDelete(crate.getId()));
     }
 
 
@@ -211,6 +214,9 @@ public class DataManager extends AbstractManager<CratesPlugin> {
     public void deleteRewardLimit(@NotNull RewardLimit limit) {
         this.plugin.runTaskAsync(task -> this.plugin.getDataHandler().deleteRewardLimit(limit));
         this.rewardLimitMap.remove(getRewardKey(limit));
+        this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimitDeleteSingle(
+            limit.getHolder(), limit.getCrateId(), limit.getRewardId()
+        ));
     }
 
     public void deleteRewardLimits(@NotNull Crate crate) {
@@ -218,6 +224,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
 
         this.plugin.runTaskAsync(task -> this.plugin.getDataHandler().deleteRewardLimits(crate));
         this.rewardLimitMap.keySet().removeIf(key -> key.getCrateId().equalsIgnoreCase(crateId));
+        this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimitDeleteByCrate(crateId));
     }
 
     public void deleteRewardLimits(@NotNull Reward reward) {
@@ -226,6 +233,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
 
         this.plugin.runTaskAsync(task -> this.plugin.getDataHandler().deleteRewardLimits(reward));
         this.rewardLimitMap.keySet().removeIf(key -> key.getCrateId().equalsIgnoreCase(crateId) && key.getRewardId().equalsIgnoreCase(rewardId));
+        this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimitDeleteByReward(crateId, rewardId));
     }
 
     public void deleteRewardLimits(@NotNull UUID playerId) {
@@ -233,6 +241,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
 
         this.plugin.runTaskAsync(task -> this.plugin.getDataHandler().deleteRewardLimits(playerId));
         this.rewardLimitMap.keySet().removeIf(key -> key.getHolder().equalsIgnoreCase(holder));
+        this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimitDeleteByHolder(holder));
     }
 
 
@@ -253,5 +262,34 @@ public class DataManager extends AbstractManager<CratesPlugin> {
     @NotNull
     public static RewardKey getRewardKey(@NotNull RewardLimit limit) {
         return new RewardKey(limit.getHolder(), limit.getCrateId(), limit.getRewardId());
+    }
+
+    // External synchronization apply methods (Redis)
+    public void applyExternalCrateData(@NotNull GlobalCrateData data) {
+        this.crateDataMap.put(data.getCrateId(), data);
+    }
+
+    public void applyExternalDeleteCrateData(@NotNull String crateId) {
+        this.crateDataMap.remove(crateId.toLowerCase());
+    }
+
+    public void applyExternalRewardLimit(@NotNull RewardLimit limit) {
+        this.addRewardLimit(limit);
+    }
+
+    public void applyExternalDeleteRewardLimit(@NotNull String holder, @NotNull String crateId, @NotNull String rewardId) {
+        this.rewardLimitMap.remove(new RewardKey(holder, crateId, rewardId));
+    }
+
+    public void applyExternalDeleteRewardLimitsByCrate(@NotNull String crateId) {
+        this.rewardLimitMap.keySet().removeIf(key -> key.getCrateId().equalsIgnoreCase(crateId));
+    }
+
+    public void applyExternalDeleteRewardLimitsByReward(@NotNull String crateId, @NotNull String rewardId) {
+        this.rewardLimitMap.keySet().removeIf(key -> key.getCrateId().equalsIgnoreCase(crateId) && key.getRewardId().equalsIgnoreCase(rewardId));
+    }
+
+    public void applyExternalDeleteRewardLimitsByHolder(@NotNull String holder) {
+        this.rewardLimitMap.keySet().removeIf(key -> key.getHolder().equalsIgnoreCase(holder));
     }
 }

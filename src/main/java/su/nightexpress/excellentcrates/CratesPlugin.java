@@ -19,6 +19,7 @@ import su.nightexpress.nightcore.NightPlugin;
 import su.nightexpress.nightcore.command.experimental.ImprovedCommands;
 import su.nightexpress.nightcore.config.PluginDetails;
 import su.nightexpress.nightcore.util.Plugins;
+import su.nightexpress.excellentcrates.sync.RedisSyncManager;
 
 import java.util.Optional;
 
@@ -34,6 +35,8 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     private CrateManager    crateManager;
     //private MenuManager     menuManager;
     private EditorManager   editorManager;
+
+    private RedisSyncManager redisSyncManager;
 
     private CrateLogger     crateLogger;
 
@@ -93,6 +96,9 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
         this.editorManager = new EditorManager(this);
         this.editorManager.setup();
 
+        this.redisSyncManager = new RedisSyncManager(this);
+        this.redisSyncManager.setup();
+
         this.dataHandler.updateRewardLimits();
 
         if (Plugins.hasPlaceholderAPI()) {
@@ -111,6 +117,7 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
         if (this.userManager != null) this.userManager.shutdown();
         if (this.dataManager != null) this.dataManager.shutdown();
         if (this.dataHandler != null) this.dataHandler.shutdown();
+        if (this.redisSyncManager != null) this.redisSyncManager.shutdown();
 
         if (Plugins.hasPlaceholderAPI()) {
             PlaceholderHook.shutdown();
@@ -150,6 +157,11 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     @NotNull
     public CrateLogger getCrateLogger() {
         return this.crateLogger;
+    }
+
+    @NotNull
+    public Optional<RedisSyncManager> getRedisSyncManager() {
+        return Optional.ofNullable(this.redisSyncManager);
     }
 
     @NotNull

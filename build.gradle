@@ -16,10 +16,6 @@ java {
 repositories {
     mavenCentral()
     maven {
-        name = 'spigot-repo'
-        url = 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/'
-    }
-    maven {
         name = 'nightexpress-releases'
         url = 'https://repo.nightexpressdev.com/releases'
     }
@@ -39,16 +35,20 @@ repositories {
         name = 'codemc-repo'
         url = 'https://repo.codemc.io/repository/maven-public/'
     }
+    maven {
+        name = 'papermc'
+        url = 'https://repo.papermc.io/repository/maven-public/'
+    }
 }
 
 dependencies {
-    compileOnly 'org.spigotmc:spigot-api:1.21.4-R0.1-SNAPSHOT'
+    compileOnly 'io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT'
     compileOnly 'su.nightexpress.nightcore:main:2.7.12'
     compileOnly 'com.comphenix.protocol:ProtocolLib:5.3.0'
     compileOnly 'com.github.retrooper:packetevents-spigot:2.9.0'
     compileOnly 'me.clip:placeholderapi:2.11.6'
+    compileOnly 'su.nightexpress.economybridge:economy-bridge:1.2.1' 
 
-    implementation 'su.nightexpress.economybridge:economy-bridge:1.2.1' 
     implementation 'redis.clients:jedis:5.1.4'
     implementation 'org.apache.commons:commons-pool2:2.11.1'
 }

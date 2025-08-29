@@ -1,5 +1,5 @@
 main: su.nightexpress.excellentcrates.CratesPlugin
-version: '${project.version}'
+version: '${version}'
 name: ExcellentCrates
 author: NightExpress
 desciption: Lightweight, powerful, feature-rich and highly customizable crates plugin.

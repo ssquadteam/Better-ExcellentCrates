@@ -233,6 +233,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
 
         if (key.isVirtual()) {
             user.setKeys(key.getId(), amount);
+            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
         }
     }
 
@@ -265,6 +266,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
 
         if (key.isVirtual()) {
             user.addKeys(key.getId(), amount);
+            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
         }
         else {
             user.addKeysOnHold(key.getId(), amount);
@@ -303,6 +305,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
 
         if (key.isVirtual()) {
             user.takeKeys(key.getId(), amount);
+            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
         }
     }
 

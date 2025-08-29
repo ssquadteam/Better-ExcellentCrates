@@ -2,6 +2,7 @@ package su.nightexpress.excellentcrates;
 
 import org.jetbrains.annotations.NotNull;
 import su.nightexpress.excellentcrates.command.basic.BaseCommands;
+import su.nightexpress.excellentcrates.command.antidupe.AntiDupeCommands;
 import su.nightexpress.excellentcrates.config.*;
 import su.nightexpress.excellentcrates.crate.CrateManager;
 import su.nightexpress.excellentcrates.crate.effect.EffectRegistry;
@@ -12,6 +13,7 @@ import su.nightexpress.excellentcrates.hologram.HologramManager;
 import su.nightexpress.excellentcrates.hooks.HookId;
 import su.nightexpress.excellentcrates.hooks.impl.PlaceholderHook;
 import su.nightexpress.excellentcrates.key.KeyManager;
+import su.nightexpress.excellentcrates.key.UuidAntiDupeManager;
 import su.nightexpress.excellentcrates.opening.OpeningManager;
 import su.nightexpress.excellentcrates.opening.ProviderRegistry;
 import su.nightexpress.excellentcrates.user.UserManager;
@@ -32,6 +34,7 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     private HologramManager hologramManager;
     private OpeningManager  openingManager;
     private KeyManager      keyManager;
+    private UuidAntiDupeManager uuidAntiDupeManager;
     private CrateManager    crateManager;
     //private MenuManager     menuManager;
     private EditorManager   editorManager;
@@ -87,6 +90,9 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
         this.keyManager = new KeyManager(this);
         this.keyManager.setup();
 
+        this.uuidAntiDupeManager = new UuidAntiDupeManager(this);
+        this.uuidAntiDupeManager.setup();
+
         this.crateManager = new CrateManager(this);
         this.crateManager.setup();
 
@@ -110,6 +116,7 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     public void disable() {
         if (this.editorManager != null) this.editorManager.shutdown();
         if (this.openingManager != null) this.openingManager.shutdown();
+        if (this.uuidAntiDupeManager != null) this.uuidAntiDupeManager.shutdown();
         if (this.keyManager != null) this.keyManager.shutdown();
         if (this.crateManager != null) this.crateManager.shutdown();
         //if (this.menuManager != null) this.menuManager.shutdown();
@@ -143,6 +150,7 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
 
     private void loadCommands() {
         BaseCommands.load(this);
+        AntiDupeCommands.load(this);
     }
 
     public boolean hasHolograms() {
@@ -192,6 +200,11 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     @NotNull
     public KeyManager getKeyManager() {
         return this.keyManager;
+    }
+
+    @NotNull
+    public UuidAntiDupeManager getUuidAntiDupeManager() {
+        return this.uuidAntiDupeManager;
     }
 
     @NotNull

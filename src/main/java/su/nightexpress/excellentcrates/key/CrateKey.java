@@ -99,6 +99,11 @@ public class CrateKey extends AbstractFileData<CratesPlugin> {
             if (!this.isItemStackable()) meta.setMaxStackSize(1);
             PDCUtil.set(meta, Keys.keyId, this.getId());
         });
+
+        if (!this.isVirtual()) {
+            this.plugin.getUuidAntiDupeManager().injectUuid(item);
+        }
+
         return item;
     }
 

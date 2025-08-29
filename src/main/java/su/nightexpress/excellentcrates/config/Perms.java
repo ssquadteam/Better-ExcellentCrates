@@ -39,6 +39,7 @@ public class Perms {
     public static final UniPermission COMMAND_PREVIEW            = new UniPermission(PREFIX_COMMAND + "preview");
     public static final UniPermission COMMAND_PREVIEW_OTHERS     = new UniPermission(PREFIX_COMMAND + "preview.others");
     public static final UniPermission COMMAND_RESETCOOLDOWN      = new UniPermission(PREFIX_COMMAND + "resetcooldown");
+    public static final UniPermission COMMAND_ANTIDUPE           = new UniPermission(PREFIX_COMMAND + "antidupe");
 
     public static final UniPermission BYPASS_CRATE_OPEN_COST = new UniPermission(PREFIX_BYPASS_OPEN_COST + Placeholders.WILDCARD);
     public static final UniPermission BYPASS_CRATE_COOLDOWN  = new UniPermission(PREFIX_BYPASS + "crate.opencooldown");
@@ -65,7 +66,8 @@ public class Perms {
             COMMAND_MENU_OTHERS,
             COMMAND_PREVIEW,
             COMMAND_PREVIEW_OTHERS,
-            COMMAND_RESETCOOLDOWN
+            COMMAND_RESETCOOLDOWN,
+            COMMAND_ANTIDUPE
         );
 
         BYPASS.addChildren(

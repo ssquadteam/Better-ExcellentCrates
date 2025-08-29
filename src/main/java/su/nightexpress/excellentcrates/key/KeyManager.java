@@ -129,6 +129,23 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
         return id == null ? null : this.getKeyById(id);
     }
 
+    /**
+     * Validates a key item including UUID anti-dupe check
+     * @param item The key item to validate
+     * @param player The player using the key (for logging)
+     * @return true if key is valid and not duped
+     */
+    public boolean validateKeyItem(@NotNull ItemStack item, @Nullable Player player) {
+        CrateKey key = this.getKeyByItem(item);
+        if (key == null) return false;
+
+        // Virtual keys don't need UUID validation
+        if (key.isVirtual()) return true;
+
+        // Physical keys must pass UUID validation
+        return this.plugin.getUuidAntiDupeManager().validateKeyUuid(item, player);
+    }
+
     @NotNull
     public Set<CrateKey> getKeys(@NotNull Player player, @NotNull Crate crate) {
         return crate.getRequiredKeys().stream().filter(key -> this.hasKey(player, key)).collect(Collectors.toSet());
@@ -161,6 +178,9 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
         for (ItemStack itemStack : content) {
             CrateKey key = itemStack == null ? null : this.getKeyByItem(itemStack);
             if (key != null && crate.isGoodKey(key)) {
+                if (!key.isVirtual() && !this.validateKeyItem(itemStack, player)) {
+                    continue; // Skip invalid/duped keys
+                }
                 return key;
             }
         }
@@ -317,11 +337,33 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
             this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
         }
         else {
+            this.markPhysicalKeysAsUsed(player, key, amount);
+
             Predicate<ItemStack> predicate = this.getItemStackPredicate(key);
             int has = Players.countItem(player, predicate);
             if (has < amount) amount = has;
 
             Players.takeItem(player, predicate, amount);
+        }
+    }
+
+    /**
+     * Marks physical key UUIDs as used before consumption
+     */
+    private void markPhysicalKeysAsUsed(@NotNull Player player, @NotNull CrateKey key, int amount) {
+        PlayerInventory inventory = player.getInventory();
+        int marked = 0;
+
+        for (ItemStack item : inventory.getContents()) {
+            if (item == null || marked >= amount) break;
+
+            if (this.isKey(item, key)) {
+                UUID keyUuid = this.plugin.getUuidAntiDupeManager().getKeyUuid(item);
+                if (keyUuid != null) {
+                    this.plugin.getUuidAntiDupeManager().markKeyAsUsed(keyUuid);
+                    marked++;
+                }
+            }
         }
     }
 
@@ -343,10 +385,37 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
         // Player is not on this server: publish a cross-server request.
         return this.plugin.getRedisSyncManager()
             .map(sync -> {
-                sync.publishGivePhysicalKey(key.getId(), playerId, amount);
+                // Pre-generate UUIDs for cross-server keys
+                Set<UUID> keyUuids = new HashSet<>();
+                for (int i = 0; i < amount; i++) {
+                    UUID keyUuid = UUID.randomUUID();
+                    keyUuids.add(keyUuid);
+                    this.plugin.getUuidAntiDupeManager().registerValidUuid(keyUuid);
+                }
+
+                sync.publishGivePhysicalKeyWithUuid(key.getId(), playerId, amount, keyUuids);
                 return true;
             })
             .orElse(false);
+    }
+
+    /**
+     * Gives physical keys with pre-generated UUIDs (used for cross-server)
+     */
+    public void givePhysicalKeysWithUuids(@NotNull Player player, @NotNull CrateKey key, int amount, @NotNull Set<UUID> keyUuids) {
+        if (key.isVirtual()) return;
+
+        Iterator<UUID> uuidIterator = keyUuids.iterator();
+        for (int i = 0; i < amount && uuidIterator.hasNext(); i++) {
+            ItemStack keyItem = key.getRawItem();
+            ItemUtil.editMeta(keyItem, meta -> {
+                if (!key.isItemStackable()) meta.setMaxStackSize(1);
+                PDCUtil.set(meta, Keys.keyId, key.getId());
+                PDCUtil.set(meta, Keys.keyUuid, uuidIterator.next());
+            });
+
+            Players.addItem(player, keyItem);
+        }
     }
 
     @NotNull

@@ -20,7 +20,9 @@ import su.nightexpress.nightcore.db.AbstractUserDataManager;
 import su.nightexpress.nightcore.db.sql.column.Column;
 import su.nightexpress.nightcore.db.sql.column.ColumnType;
 import su.nightexpress.nightcore.db.sql.query.SQLQueries;
+import su.nightexpress.nightcore.db.sql.query.impl.InsertQuery;
 import su.nightexpress.nightcore.db.sql.query.impl.SelectQuery;
+import su.nightexpress.nightcore.db.sql.query.impl.UpdateQuery;
 import su.nightexpress.nightcore.db.sql.query.type.ValuedQuery;
 import su.nightexpress.nightcore.util.Lists;
 
@@ -45,13 +47,25 @@ public class DataHandler extends AbstractUserDataManager<CratesPlugin, CrateUser
     public static final Column COLUMN_LATEST_OPENER_NAME = Column.of("latestOpenerName", ColumnType.STRING);
     public static final Column COLUMN_LATEST_REWARD_ID   = Column.of("latestRewardId", ColumnType.STRING);
 
+    public static final Column COLUMN_KEY_UUID        = Column.of("keyUuid", ColumnType.STRING);
+    public static final Column COLUMN_CREATION_TIME   = Column.of("creationTime", ColumnType.LONG);
+    public static final Column COLUMN_IS_USED         = Column.of("isUsed", ColumnType.BOOLEAN);
+    public static final Column COLUMN_USED_TIME       = Column.of("usedTime", ColumnType.LONG);
+    public static final Column COLUMN_KEYS_GENERATED  = Column.of("keysGenerated", ColumnType.LONG);
+    public static final Column COLUMN_DUPE_ATTEMPTS   = Column.of("dupeAttempts", ColumnType.LONG);
+    public static final Column COLUMN_VALID_USAGES    = Column.of("validUsages", ColumnType.LONG);
+
     private final String tableRewardLimits;
     private final String tableCrateData;
+    private final String tableKeyUuids;
+    private final String tableAntiDupeStats;
 
     public DataHandler(@NotNull CratesPlugin plugin) {
         super(plugin);
         this.tableRewardLimits = this.getTablePrefix() + "_reward_limits";
         this.tableCrateData = this.getTablePrefix() + "_crate_data";
+        this.tableKeyUuids = this.getTablePrefix() + "_key_uuids";
+        this.tableAntiDupeStats = this.getTablePrefix() + "_antidupe_stats";
     }
 
     public void updateRewardLimits() {
@@ -179,6 +193,19 @@ public class DataHandler extends AbstractUserDataManager<CratesPlugin, CrateUser
             COLUMN_AMOUNT,
             COLUMN_RESET_DATE
         ));
+
+        this.createTable(this.tableKeyUuids, Lists.newList(
+            COLUMN_KEY_UUID,
+            COLUMN_CREATION_TIME,
+            COLUMN_IS_USED,
+            COLUMN_USED_TIME
+        ));
+
+        this.createTable(this.tableAntiDupeStats, Lists.newList(
+            COLUMN_KEYS_GENERATED,
+            COLUMN_DUPE_ATTEMPTS,
+            COLUMN_VALID_USAGES
+        ));
     }
 
     @Override
@@ -186,6 +213,116 @@ public class DataHandler extends AbstractUserDataManager<CratesPlugin, CrateUser
         query.setValue(COLUMN_CRATE_DATA, user -> this.gson.toJson(user.getCrateDataMap()));
         query.setValue(COLUMN_KEYS, user -> this.gson.toJson(user.getKeysMap()));
         query.setValue(COLUMN_KEYS_ON_HOLD, user -> this.gson.toJson(user.getKeysOnHold()));
+    }
+
+    /**
+     * Inserts a new key UUID into the database
+     */
+    public void insertKeyUuid(@NotNull UUID keyUuid) {
+        // Use simple SQL execution for now
+        String sql = "INSERT INTO " + this.tableKeyUuids + " (keyUuid, creationTime, isUsed, usedTime) VALUES (?, ?, ?, ?)";
+        try (var connection = this.getConnector().getConnection();
+             var statement = connection.prepareStatement(sql)) {
+
+            statement.setString(1, keyUuid.toString());
+            statement.setLong(2, System.currentTimeMillis());
+            statement.setBoolean(3, false);
+            statement.setLong(4, 0L);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            this.plugin.error("Failed to insert key UUID: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Marks a key UUID as used
+     */
+    public void markKeyUuidAsUsed(@NotNull UUID keyUuid) {
+        String sql = "UPDATE " + this.tableKeyUuids + " SET isUsed = ?, usedTime = ? WHERE keyUuid = ?";
+        try (var connection = this.getConnector().getConnection();
+             var statement = connection.prepareStatement(sql)) {
+
+            statement.setBoolean(1, true);
+            statement.setLong(2, System.currentTimeMillis());
+            statement.setString(3, keyUuid.toString());
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            this.plugin.error("Failed to mark key UUID as used: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Loads all valid (registered) key UUIDs from database
+     */
+    @NotNull
+    public Set<UUID> loadValidKeyUuids() {
+        Set<UUID> uuids = new HashSet<>();
+        String sql = "SELECT keyUuid FROM " + this.tableKeyUuids;
+
+        try (var connection = this.getConnector().getConnection();
+             var statement = connection.prepareStatement(sql);
+             var resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+                String uuidStr = resultSet.getString("keyUuid");
+                try {
+                    uuids.add(UUID.fromString(uuidStr));
+                } catch (IllegalArgumentException e) {
+                    this.plugin.warn("Invalid UUID in database: " + uuidStr);
+                }
+            }
+        } catch (SQLException e) {
+            this.plugin.error("Failed to load valid key UUIDs: " + e.getMessage());
+        }
+
+        return uuids;
+    }
+
+    /**
+     * Loads all used key UUIDs from database
+     */
+    @NotNull
+    public Set<UUID> loadUsedKeyUuids() {
+        Set<UUID> uuids = new HashSet<>();
+        String sql = "SELECT keyUuid FROM " + this.tableKeyUuids + " WHERE isUsed = ?";
+
+        try (var connection = this.getConnector().getConnection();
+             var statement = connection.prepareStatement(sql)) {
+
+            statement.setBoolean(1, true);
+            try (var resultSet = statement.executeQuery()) {
+                while (resultSet.next()) {
+                    String uuidStr = resultSet.getString("keyUuid");
+                    try {
+                        uuids.add(UUID.fromString(uuidStr));
+                    } catch (IllegalArgumentException e) {
+                        this.plugin.warn("Invalid used UUID in database: " + uuidStr);
+                    }
+                }
+            }
+        } catch (SQLException e) {
+            this.plugin.error("Failed to load used key UUIDs: " + e.getMessage());
+        }
+
+        return uuids;
+    }
+
+    /**
+     * Saves anti-dupe statistics to database
+     */
+    public void saveAntiDupeStatistics(long keysGenerated, long dupeAttempts, long validUsages) {
+        // Simple insert approach - just insert the statistics
+        String sql = "INSERT INTO " + this.tableAntiDupeStats + " (keysGenerated, dupeAttempts, validUsages) VALUES (?, ?, ?)";
+        try (var connection = this.getConnector().getConnection();
+             var statement = connection.prepareStatement(sql)) {
+
+            statement.setLong(1, keysGenerated);
+            statement.setLong(2, dupeAttempts);
+            statement.setLong(3, validUsages);
+            statement.executeUpdate();
+        } catch (SQLException e) {
+            this.plugin.error("Failed to save anti-dupe statistics: " + e.getMessage());
+        }
     }
 
     @Override

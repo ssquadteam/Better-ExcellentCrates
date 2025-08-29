@@ -2,6 +2,7 @@ package su.nightexpress.excellentcrates.sync;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import org.jetbrains.annotations.NotNull;
@@ -23,7 +24,10 @@ import su.nightexpress.excellentcrates.user.CrateUser;
 import su.nightexpress.excellentcrates.key.CrateKey;
 
 import java.lang.reflect.Type;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class RedisSyncManager {
@@ -206,6 +210,51 @@ public class RedisSyncManager {
         publish("GIVE_PHYSICAL_KEY", d);
     }
 
+    /**
+     * Publishes a new key UUID registration across servers
+     */
+    public void publishKeyUuidRegistered(@NotNull UUID keyUuid) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("keyUuid", keyUuid.toString());
+        d.addProperty("timestamp", System.currentTimeMillis());
+
+        publish("KEY_UUID_REGISTERED", d);
+    }
+
+    /**
+     * Publishes a key UUID usage across servers
+     */
+    public void publishKeyUuidUsed(@NotNull UUID keyUuid) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("keyUuid", keyUuid.toString());
+        d.addProperty("timestamp", System.currentTimeMillis());
+
+        publish("KEY_UUID_USED", d);
+    }
+
+    /**
+     * Publishes cross-server physical key giving with UUID injection
+     */
+    public void publishGivePhysicalKeyWithUuid(@NotNull String keyId, @NotNull UUID playerId, int amount, @NotNull Set<UUID> keyUuids) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("playerId", playerId.toString());
+        d.addProperty("keyId", keyId);
+        d.addProperty("amount", amount);
+        d.addProperty("origin", this.nodeId);
+
+        JsonArray uuidArray = new JsonArray();
+        keyUuids.forEach(uuid -> uuidArray.add(uuid.toString()));
+        d.add("keyUuids", uuidArray);
+
+        publish("GIVE_PHYSICAL_KEY_WITH_UUID", d);
+    }
+
     private void publish(@NotNull String type, @NotNull JsonObject data) {
         if (!isActive()) return;
 
@@ -269,6 +318,9 @@ public class RedisSyncManager {
                 case "REWARD_LIMIT_UPSERT" -> applyRewardLimitUpsert(data);
                 case "REWARD_LIMIT_DELETE" -> applyRewardLimitDelete(data);
                 case "GIVE_PHYSICAL_KEY" -> applyGivePhysicalKey(data);
+                case "KEY_UUID_REGISTERED" -> applyKeyUuidRegistered(data);
+                case "KEY_UUID_USED" -> applyKeyUuidUsed(data);
+                case "GIVE_PHYSICAL_KEY_WITH_UUID" -> applyGivePhysicalKeyWithUuid(data);
                 default -> {}
             }
         }
@@ -377,6 +429,64 @@ public class RedisSyncManager {
                 this.plugin.info("Gave physical key '" + keyId + "' x" + amount + " to " + player.getName() + " via Redis request from " + origin + ".");
             }
             // If player not online on this node, ignore. Another node should handle if the player is present there.
+        });
+    }
+
+    private void applyKeyUuidRegistered(@NotNull JsonObject data) {
+        String uuidStr = data.get("keyUuid").getAsString();
+
+        try {
+            UUID keyUuid = UUID.fromString(uuidStr);
+            this.plugin.runTask(task -> {
+                this.plugin.getUuidAntiDupeManager().applyExternalKeyUuidRegistered(keyUuid);
+            });
+        } catch (IllegalArgumentException e) {
+            this.plugin.warn("Invalid UUID received from Redis: " + uuidStr);
+        }
+    }
+
+    private void applyKeyUuidUsed(@NotNull JsonObject data) {
+        String uuidStr = data.get("keyUuid").getAsString();
+
+        try {
+            UUID keyUuid = UUID.fromString(uuidStr);
+            this.plugin.runTask(task -> {
+                this.plugin.getUuidAntiDupeManager().applyExternalKeyUuidUsed(keyUuid);
+            });
+        } catch (IllegalArgumentException e) {
+            this.plugin.warn("Invalid used UUID received from Redis: " + uuidStr);
+        }
+    }
+
+    private void applyGivePhysicalKeyWithUuid(@NotNull JsonObject data) {
+        UUID playerId = UUID.fromString(data.get("playerId").getAsString());
+        String keyId = data.get("keyId").getAsString();
+        int amount = data.get("amount").getAsInt();
+        String origin = data.get("origin").getAsString();
+
+        // Extract UUIDs for the keys
+        Set<UUID> keyUuids = new HashSet<>();
+        if (data.has("keyUuids")) {
+            data.getAsJsonArray("keyUuids").forEach(element -> {
+                try {
+                    keyUuids.add(UUID.fromString(element.getAsString()));
+                } catch (IllegalArgumentException e) {
+                    this.plugin.warn("Invalid key UUID in cross-server key giving: " + element.getAsString());
+                }
+            });
+        }
+
+        this.plugin.runTask(task -> {
+            Player player = Bukkit.getPlayer(playerId);
+            CrateKey key = this.plugin.getKeyManager().getKeyById(keyId);
+
+            if (key == null || key.isVirtual()) return;
+
+            if (player != null) {
+                // Give keys with pre-generated UUIDs
+                this.plugin.getKeyManager().givePhysicalKeysWithUuids(player, key, amount, keyUuids);
+                this.plugin.info("Gave physical key '" + keyId + "' x" + amount + " with UUIDs to " + player.getName() + " via Redis request from " + origin + ".");
+            }
         });
     }
 }

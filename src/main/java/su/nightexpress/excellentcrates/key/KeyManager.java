@@ -325,6 +325,30 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
         }
     }
 
+    public boolean givePhysicalKeyCrossServer(@NotNull String keyId, @NotNull UUID playerId, int amount) {
+        CrateKey key = this.getKeyById(keyId);
+        if (key == null || key.isVirtual()) return false;
+        return this.givePhysicalKeyCrossServer(key, playerId, amount);
+    }
+
+    public boolean givePhysicalKeyCrossServer(@NotNull CrateKey key, @NotNull UUID playerId, int amount) {
+        if (key.isVirtual()) return false;
+
+        Player player = org.bukkit.Bukkit.getPlayer(playerId);
+        if (player != null) {
+            // Player is on this server, give the physical key immediately.
+            this.giveKey(player, key, amount);
+            return true;
+        }
+        // Player is not on this server: publish a cross-server request.
+        return this.plugin.getRedisSyncManager()
+            .map(sync -> {
+                sync.publishGivePhysicalKey(key.getId(), playerId, amount);
+                return true;
+            })
+            .orElse(false);
+    }
+
     @NotNull
     private Predicate<ItemStack> getItemStackPredicate(@NotNull CrateKey key) {
         return stack -> this.getKeyByItem(stack) == key;

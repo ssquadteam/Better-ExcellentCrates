@@ -5,6 +5,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import org.jetbrains.annotations.NotNull;
+import org.bukkit.Bukkit;
+import org.bukkit.entity.Player;
 import redis.clients.jedis.DefaultJedisClientConfig;
 import redis.clients.jedis.HostAndPort;
 import redis.clients.jedis.Jedis;
@@ -18,6 +20,7 @@ import su.nightexpress.excellentcrates.data.crate.UserCrateData;
 import su.nightexpress.excellentcrates.data.reward.RewardLimit;
 import su.nightexpress.excellentcrates.data.serialize.UserCrateDataSerializer;
 import su.nightexpress.excellentcrates.user.CrateUser;
+import su.nightexpress.excellentcrates.key.CrateKey;
 
 import java.lang.reflect.Type;
 import java.util.Map;
@@ -191,6 +194,18 @@ public class RedisSyncManager {
         publish("REWARD_LIMIT_DELETE", d);
     }
 
+    public void publishGivePhysicalKey(@NotNull String keyId, @NotNull UUID playerId, int amount) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("playerId", playerId.toString());
+        d.addProperty("keyId", keyId);
+        d.addProperty("amount", amount);
+        d.addProperty("origin", this.nodeId);
+
+        publish("GIVE_PHYSICAL_KEY", d);
+    }
+
     private void publish(@NotNull String type, @NotNull JsonObject data) {
         if (!isActive()) return;
 
@@ -253,6 +268,7 @@ public class RedisSyncManager {
                 case "CRATE_DATA_DELETE" -> applyCrateDataDelete(data);
                 case "REWARD_LIMIT_UPSERT" -> applyRewardLimitUpsert(data);
                 case "REWARD_LIMIT_DELETE" -> applyRewardLimitDelete(data);
+                case "GIVE_PHYSICAL_KEY" -> applyGivePhysicalKey(data);
                 default -> {}
             }
         }
@@ -339,6 +355,28 @@ public class RedisSyncManager {
                 );
                 default -> {}
             }
+        });
+    }
+
+    private void applyGivePhysicalKey(@NotNull JsonObject data) {
+        String playerIdStr = data.get("playerId").getAsString();
+        String keyId = data.get("keyId").getAsString();
+        int amount = data.get("amount").getAsInt();
+        String origin = data.has("origin") && !data.get("origin").isJsonNull() ? data.get("origin").getAsString() : "unknown";
+
+        UUID playerId = UUID.fromString(playerIdStr);
+
+        this.plugin.runTask(task -> {
+            Player player = Bukkit.getPlayer(playerId);
+
+            CrateKey key = this.plugin.getKeyManager().getKeyById(keyId);
+            if (key == null || key.isVirtual()) return;
+
+            if (player != null) {
+                this.plugin.getKeyManager().giveKey(player, key, amount);
+                this.plugin.info("Gave physical key '" + keyId + "' x" + amount + " to " + player.getName() + " via Redis request from " + origin + ".");
+            }
+            // If player not online on this node, ignore. Another node should handle if the player is present there.
         });
     }
 }

@@ -70,6 +70,11 @@ public class BaseCommands {
                 .permission(Perms.COMMAND_KEY_GIVE)
                 .executes((context, arguments) -> giveKey(plugin, context, arguments))
             )
+            .addDirect("givephysical", builder -> buildKeyManage(plugin, builder)
+                .description(Lang.COMMAND_KEY_GIVE_DESC)
+                .permission(Perms.COMMAND_KEY_GIVE)
+                .executes((context, arguments) -> givePhysicalKeyCross(plugin, context, arguments))
+            )
             .addDirect("set", builder -> buildKeyManage(plugin, builder)
                 .description(Lang.COMMAND_KEY_SET_DESC)
                 .permission(Perms.COMMAND_KEY_SET)
@@ -363,6 +368,49 @@ public class BaseCommands {
 
             plugin.getKeyManager().giveKey(user, key, amount);
             plugin.getUserManager().save(user);
+
+            Player target = user.getPlayer();
+            if (target != null && !arguments.hasFlag(CommandFlags.SILENT)) {
+                Lang.COMMAND_KEY_GIVE_NOTIFY.getMessage().send(target, replacer -> replacer
+                    .replace(Placeholders.GENERIC_AMOUNT, amount)
+                    .replace(key.replacePlaceholders())
+                );
+            }
+
+            if (!arguments.hasFlag(CommandFlags.SILENT_FEEDBACK)) {
+                Lang.COMMAND_KEY_GIVE_DONE.getMessage().send(context.getSender(), replacer -> replacer
+                    .replace(Placeholders.PLAYER_NAME, user.getName())
+                    .replace(Placeholders.GENERIC_AMOUNT, amount)
+                    .replace(key.replacePlaceholders()));
+            }
+        });
+        return true;
+    }
+
+    // Cross-server immediate PHYSICAL key delivery:
+    // - If target is on this server, item is handed instantly.
+    // - Otherwise, a Redis pub/sub request is broadcast and the node with the player online will deliver.
+    private static boolean givePhysicalKeyCross(@NotNull CratesPlugin plugin, @NotNull CommandContext context, @NotNull ParsedArguments arguments) {
+        CrateKey key = arguments.getArgument(CommandArguments.KEY, CrateKey.class);
+
+        int amount = arguments.getIntArgument(CommandArguments.AMOUNT, 1);
+        if (amount <= 0) return false;
+
+        plugin.getUserManager().manageUser(arguments.getStringArgument(CommandArguments.PLAYER), user -> {
+            if (user == null) {
+                context.errorBadPlayer();
+                return;
+            }
+
+            if (key.isVirtual()) {
+                // Fall back to regular give for virtual keys.
+                plugin.getKeyManager().giveKey(user, key, amount);
+                plugin.getUserManager().save(user);
+            }
+            else {
+                // Use Redis cross-server path for physical keys.
+                plugin.getKeyManager().givePhysicalKeyCrossServer(key, user.getId(), amount);
+            }
 
             Player target = user.getPlayer();
             if (target != null && !arguments.hasFlag(CommandFlags.SILENT)) {

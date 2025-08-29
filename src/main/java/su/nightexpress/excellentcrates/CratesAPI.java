@@ -6,6 +6,8 @@ import su.nightexpress.excellentcrates.crate.CrateManager;
 import su.nightexpress.excellentcrates.key.KeyManager;
 import su.nightexpress.excellentcrates.user.CrateUser;
 import su.nightexpress.excellentcrates.user.UserManager;
+import java.util.UUID;
+import su.nightexpress.excellentcrates.sync.RedisSyncManager;
 
 public class CratesAPI {
 
@@ -59,5 +61,22 @@ public class CratesAPI {
 
     public static void error(@NotNull String msg) {
         plugin.error(msg);
+    }
+
+    // API: Cross-server physical key delivery over Redis.
+    // If the player is online on this server, the key is given locally.
+    // Otherwise, a Redis request is published and whichever server has the player online will deliver it.
+    public static boolean givePhysicalKeyCrossServer(@NotNull UUID playerId, @NotNull String keyId, int amount) {
+        return plugin.getKeyManager().givePhysicalKeyCrossServer(keyId, playerId, amount);
+    }
+
+    // Convenience overload when you already have a Player object.
+    public static boolean givePhysicalKeyCrossServer(@NotNull Player player, @NotNull String keyId, int amount) {
+        return plugin.getKeyManager().givePhysicalKeyCrossServer(keyId, player.getUniqueId(), amount);
+    }
+
+    // Expose this server's Redis node identifier (used as 'origin' in messages).
+    public static String getRedisNodeId() {
+        return plugin.getRedisSyncManager().map(RedisSyncManager::getNodeId).orElse(null);
     }
 }

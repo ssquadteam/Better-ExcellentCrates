@@ -42,7 +42,7 @@ public class OpeningManager extends AbstractManager<CratesPlugin> {
 
         this.addListener(new OpeningListener(this.plugin, this));
 
-        this.addTask(this::tickOpenings, 1L);
+        this.plugin.getFoliaScheduler().runTimer(this::tickOpenings, 0L, 1L);
     }
 
     @Override

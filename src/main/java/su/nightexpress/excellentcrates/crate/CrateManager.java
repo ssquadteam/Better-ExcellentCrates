@@ -75,11 +75,11 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
         this.loadPreviews();
         this.loadCrates();
         this.loadUI();
-        this.plugin.runTask(task -> this.runInspections()); // After everything is loaded.
+        this.plugin.runNextTick(() -> this.runInspections()); // After everything is loaded.
 
         this.addListener(new CrateListener(this.plugin, this));
 
-        this.addAsyncTask(this::playCrateEffects, 1L);
+        this.plugin.getFoliaScheduler().runTimerAsync(this::playCrateEffects, 0L, 1L);
     }
 
     @Override
@@ -625,12 +625,18 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
                 Location location = worldPos.toLocation();
                 if (location == null) return;
 
-                CrateUtils.getPlayersForEffects(location).forEach(player -> {
-                    effect.playStep(location, particle, player);
+                // Use location-specific scheduling for Folia compatibility
+                this.plugin.runAtLocation(location, () -> {
+                    CrateUtils.getPlayersForEffects(location).forEach(player -> {
+                        effect.playStep(location, particle, player);
+                    });
                 });
             });
         });
 
-        EffectRegistry.getEffects().forEach(CrateEffect::addTickCount);
+        // This can run on global scheduler
+        this.plugin.runNextTick(() -> {
+            EffectRegistry.getEffects().forEach(CrateEffect::addTickCount);
+        });
     }
 }

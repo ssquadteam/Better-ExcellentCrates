@@ -314,12 +314,12 @@ public class RedisSyncManager {
             : null;
 
         GlobalCrateData crateData = new GlobalCrateData(crateId, openerId, openerName, rewardId);
-        this.plugin.runTask(task -> this.plugin.getDataManager().applyExternalCrateData(crateData));
+        this.plugin.runNextTick(() -> this.plugin.getDataManager().applyExternalCrateData(crateData));
     }
 
     private void applyCrateDataDelete(@NotNull JsonObject data) {
         String crateId = data.get("crateId").getAsString();
-        this.plugin.runTask(task -> this.plugin.getDataManager().applyExternalDeleteCrateData(crateId));
+        this.plugin.runNextTick(() -> this.plugin.getDataManager().applyExternalDeleteCrateData(crateId));
     }
 
     private void applyRewardLimitUpsert(@NotNull JsonObject data) {
@@ -330,13 +330,13 @@ public class RedisSyncManager {
         long resetDate = data.get("resetDate").getAsLong();
 
         RewardLimit limit = new RewardLimit(crateId, rewardId, holder, amount, resetDate);
-        this.plugin.runTask(task -> this.plugin.getDataManager().applyExternalRewardLimit(limit));
+        this.plugin.runNextTick(() -> this.plugin.getDataManager().applyExternalRewardLimit(limit));
     }
 
     private void applyRewardLimitDelete(@NotNull JsonObject data) {
         String mode = data.get("mode").getAsString();
 
-        this.plugin.runTask(task -> {
+        this.plugin.runNextTick(() -> {
             switch (mode) {
                 case "single" -> this.plugin.getDataManager().applyExternalDeleteRewardLimit(
                     data.get("holder").getAsString(),

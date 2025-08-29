@@ -5,11 +5,13 @@ import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import su.nightexpress.excellentcrates.CratesPlugin;
+import su.nightexpress.excellentcrates.config.Lang;
 import su.nightexpress.excellentcrates.config.Perms;
 import su.nightexpress.excellentcrates.key.CrateKey;
 import su.nightexpress.nightcore.command.experimental.CommandContext;
 import su.nightexpress.nightcore.command.experimental.argument.ArgumentTypes;
 import su.nightexpress.nightcore.command.experimental.argument.ParsedArguments;
+import su.nightexpress.nightcore.command.experimental.node.ChainedNode;
 import su.nightexpress.nightcore.command.experimental.node.DirectNode;
 import su.nightexpress.nightcore.util.text.NightMessage;
 import su.nightexpress.nightcore.util.Lists;
@@ -24,44 +26,36 @@ public class AntiDupeCommands {
     public static void load(@NotNull CratesPlugin plugin) {
         var root = plugin.getRootNode();
 
-        root.addChildren(DirectNode.builder(plugin, "antidupe")
+        root.addChildren(ChainedNode.builder(plugin, "antidupe")
             .description("UUID Anti-Dupe system management commands")
             .permission(Perms.COMMAND_ANTIDUPE)
-            .withArgument(ArgumentTypes.string("action")
-                .withSamples(context -> Lists.newList("stats", "validate", "info", "reload"))
+
+            .addDirect("stats", builder -> builder
+                .description("View UUID Anti-Dupe system statistics")
+                .permission(Perms.COMMAND_ANTIDUPE)
+                .executes((context, arguments) -> executeStats(plugin, context.getSender()))
             )
-            .executes((context, arguments) -> execute(plugin, context, arguments))
+
+            .addDirect("validate", builder -> builder
+                .description("Validate the key in your main hand")
+                .permission(Perms.COMMAND_ANTIDUPE)
+                .playerOnly()
+                .executes((context, arguments) -> executeValidate(plugin, context.getSender()))
+            )
+
+            .addDirect("info", builder -> builder
+                .description("Get detailed information about the key in your main hand")
+                .permission(Perms.COMMAND_ANTIDUPE)
+                .playerOnly()
+                .executes((context, arguments) -> executeInfo(plugin, context.getSender()))
+            )
+
+            .addDirect("reload", builder -> builder
+                .description("Reload the UUID Anti-Dupe system")
+                .permission(Perms.COMMAND_ANTIDUPE)
+                .executes((context, arguments) -> executeReload(plugin, context.getSender()))
+            )
         );
-    }
-
-    public static boolean execute(@NotNull CratesPlugin plugin, @NotNull CommandContext context, @NotNull ParsedArguments arguments) {
-        CommandSender sender = context.getSender();
-
-        String action = arguments.getStringArgument("action");
-        if (action == null) {
-            sender.sendMessage("§c[ExcellentCrates] Usage: /antidupe <stats|validate|info|reload>");
-            return false;
-        }
-
-        switch (action.toLowerCase()) {
-            case "stats" -> {
-                return executeStats(plugin, sender);
-            }
-            case "validate" -> {
-                return executeValidate(plugin, sender);
-            }
-            case "info" -> {
-                return executeInfo(plugin, sender);
-            }
-            case "reload" -> {
-                return executeReload(plugin, sender);
-            }
-            default -> {
-                sender.sendMessage("§c[ExcellentCrates] Unknown action: " + action);
-                sender.sendMessage("§c[ExcellentCrates] Available actions: stats, validate, info, reload");
-                return false;
-            }
-        }
     }
 
     private static boolean executeStats(@NotNull CratesPlugin plugin, @NotNull CommandSender sender) {

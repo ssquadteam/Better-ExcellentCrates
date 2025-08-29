@@ -175,12 +175,14 @@ public class BaseCommands {
 
         Location location = new Location(world, x, y, z);
 
-        if (!plugin.getCrateManager().dropCrateItem(crate, location)) return false;
-
-        Lang.COMMAND_DROP_DONE.getMessage().send(context.getSender(), replacer -> replacer
-            .replace(crate.replacePlaceholders())
-            .replace(Placeholders.forLocation(location))
-        );
+        plugin.runAtLocation(location, () -> {
+            if (plugin.getCrateManager().dropCrateItem(crate, location)) {
+                Lang.COMMAND_DROP_DONE.getMessage().send(context.getSender(), replacer -> replacer
+                    .replace(crate.replacePlaceholders())
+                    .replace(Placeholders.forLocation(location))
+                );
+            }
+        });
         return true;
     }
 
@@ -288,12 +290,14 @@ public class BaseCommands {
 
         Location location = new Location(world, x, y, z);
 
-        if (!plugin.getKeyManager().dropKeyItem(key, location)) return false;
-
-        Lang.COMMAND_DROP_KEY_DONE.getMessage().send(context.getSender(), replacer -> replacer
-            .replace(key.replacePlaceholders())
-            .replace(Placeholders.forLocation(location))
-        );
+        plugin.runAtLocation(location, () -> {
+            if (plugin.getKeyManager().dropKeyItem(key, location)) {
+                Lang.COMMAND_DROP_KEY_DONE.getMessage().send(context.getSender(), replacer -> replacer
+                    .replace(key.replacePlaceholders())
+                    .replace(Placeholders.forLocation(location))
+                );
+            }
+        });
         return true;
     }
 

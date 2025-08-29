@@ -70,11 +70,6 @@ public class BaseCommands {
                 .permission(Perms.COMMAND_KEY_GIVE)
                 .executes((context, arguments) -> giveKey(plugin, context, arguments))
             )
-            .addDirect("givephysical", builder -> buildKeyManage(plugin, builder)
-                .description(Lang.COMMAND_KEY_GIVE_DESC)
-                .permission(Perms.COMMAND_KEY_GIVE)
-                .executes((context, arguments) -> givePhysicalKeyCross(plugin, context, arguments))
-            )
             .addDirect("set", builder -> buildKeyManage(plugin, builder)
                 .description(Lang.COMMAND_KEY_SET_DESC)
                 .permission(Perms.COMMAND_KEY_SET)
@@ -366,8 +361,21 @@ public class BaseCommands {
                 return;
             }
 
-            plugin.getKeyManager().giveKey(user, key, amount);
-            plugin.getUserManager().save(user);
+            if (key.isVirtual()) {
+                plugin.getKeyManager().giveKey(user, key, amount);
+                plugin.getUserManager().save(user);
+            }
+            else {
+                Player online = user.getPlayer();
+                if (online != null) {
+                    plugin.getKeyManager().giveKey(online, key, amount);
+                }
+                else {
+                    plugin.getKeyManager().givePhysicalKeyCrossServer(key, user.getId(), amount);
+                    user.addKeysOnHold(key.getId(), amount);
+                    plugin.getUserManager().save(user);
+                }
+            }
 
             Player target = user.getPlayer();
             if (target != null && !arguments.hasFlag(CommandFlags.SILENT)) {

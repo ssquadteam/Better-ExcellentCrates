@@ -20,6 +20,7 @@ import su.nightexpress.nightcore.command.experimental.ImprovedCommands;
 import su.nightexpress.nightcore.config.PluginDetails;
 import su.nightexpress.nightcore.util.Plugins;
 import su.nightexpress.excellentcrates.sync.RedisSyncManager;
+import su.nightexpress.excellentcrates.scheduler.FoliaScheduler;
 
 import java.util.Optional;
 
@@ -39,6 +40,7 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     private RedisSyncManager redisSyncManager;
 
     private CrateLogger     crateLogger;
+    private FoliaScheduler  foliaScheduler;
 
     @Override
     @NotNull
@@ -51,6 +53,8 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
 
     @Override
     public void enable() {
+        this.foliaScheduler = new FoliaScheduler(this);
+
         this.loadEngine();
 
         if (!Plugins.hasEconomyBridge()) {
@@ -119,6 +123,8 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
         if (this.dataHandler != null) this.dataHandler.shutdown();
         if (this.redisSyncManager != null) this.redisSyncManager.shutdown();
 
+        if (this.foliaScheduler != null) this.foliaScheduler.cancelAllTasks();
+
         if (Plugins.hasPlaceholderAPI()) {
             PlaceholderHook.shutdown();
         }
@@ -157,6 +163,11 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     @NotNull
     public CrateLogger getCrateLogger() {
         return this.crateLogger;
+    }
+
+    @NotNull
+    public FoliaScheduler getFoliaScheduler() {
+        return this.foliaScheduler;
     }
 
     @NotNull

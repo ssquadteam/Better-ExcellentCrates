@@ -41,7 +41,7 @@ public class HologramManager extends AbstractManager<CratesPlugin> {
         if (this.detectHandler()) {
             this.addListener(new HologramListener(this.plugin, this));
 
-            this.addAsyncTask(this::tickHolograms, Config.CRATE_HOLOGRAM_UPDATE_INTERVAL.get());
+            this.plugin.getFoliaScheduler().runTimerAsync(this::tickHolograms, 0L, Config.CRATE_HOLOGRAM_UPDATE_INTERVAL.get());
         }
     }
 
@@ -71,6 +71,7 @@ public class HologramManager extends AbstractManager<CratesPlugin> {
     }
 
     private void tickHolograms() {
+        if (this.plugin.getCrateManager() == null) return;
         this.plugin.getCrateManager().getCrates().forEach(crate -> {
             if (!crate.isHologramEnabled()) return;
 

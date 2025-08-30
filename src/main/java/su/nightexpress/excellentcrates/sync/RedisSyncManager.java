@@ -339,14 +339,12 @@ public class RedisSyncManager {
         Map<String, UserCrateData> crates = this.gson.fromJson(data.get("crateData"), mapSUserData);
 
         this.plugin.runTask(task -> {
-            for (CrateUser user : this.plugin.getUserManager().getLoaded()) {
-                if (user.getId().equals(id)) {
-                    user.getKeysMap().clear();
-                    if (keys != null) user.getKeysMap().putAll(keys);
-                    user.getCrateDataMap().clear();
-                    if (crates != null) user.getCrateDataMap().putAll(crates);
-                    break;
-                }
+            CrateUser user = this.plugin.getUserManager().getLoaded(id);
+            if (user != null) {
+                user.getKeysMap().clear();
+                if (keys != null) user.getKeysMap().putAll(keys);
+                user.getCrateDataMap().clear();
+                if (crates != null) user.getCrateDataMap().putAll(crates);
             }
         });
     }

@@ -53,7 +53,7 @@ public class BaseCommands {
             .addDirect("inspect", builder -> builder
                 .description(Lang.COMMAND_KEY_INSPECT_DESC)
                 .permission(Perms.COMMAND_KEY_INSPECT)
-                .withArgument(ArgumentTypes.playerName(CommandArguments.PLAYER).permission(Perms.COMMAND_KEY_INSPECT_OTHERS))
+                .withArgument(CommandArguments.crossServerPlayerName(plugin).permission(Perms.COMMAND_KEY_INSPECT_OTHERS))
                 .executes((context, arguments) -> inspectKeys(plugin, context, arguments))
             )
             .addDirect("giveall", builder -> builder
@@ -133,14 +133,14 @@ public class BaseCommands {
             .description(Lang.COMMAND_PREVIEW_DESC)
             .permission(Perms.COMMAND_PREVIEW)
             .withArgument(CommandArguments.forCrate(plugin).required())
-            .withArgument(ArgumentTypes.playerName(CommandArguments.PLAYER).permission(Perms.COMMAND_PREVIEW_OTHERS))
+            .withArgument(CommandArguments.crossServerPlayerName(plugin).permission(Perms.COMMAND_PREVIEW_OTHERS))
             .executes((context, arguments) -> previewCrate(plugin, context, arguments))
         );
 
         root.addChildren(DirectNode.builder(plugin, "resetcooldown")
             .description(Lang.COMMAND_RESET_COOLDOWN_DESC)
             .permission(Perms.COMMAND_RESETCOOLDOWN)
-            .withArgument(ArgumentTypes.playerName(CommandArguments.PLAYER).required())
+            .withArgument(CommandArguments.crossServerPlayerName(plugin).required())
             .withArgument(CommandArguments.forCrate(plugin).required())
             .executes((context, arguments) -> resetCrateCooldown(plugin, context, arguments))
         );
@@ -158,7 +158,7 @@ public class BaseCommands {
     @NotNull
     private static DirectNodeBuilder buildKeyManage(@NotNull CratesPlugin plugin, @NotNull DirectNodeBuilder builder) {
         return builder
-            .withArgument(ArgumentTypes.playerName(CommandArguments.PLAYER).required())
+            .withArgument(CommandArguments.crossServerPlayerName(plugin).required())
             .withArgument(CommandArguments.forKey(plugin).required())
             .withArgument(ArgumentTypes.integerAbs(CommandArguments.AMOUNT).localized(Lang.COMMAND_ARGUMENT_NAME_AMOUNT).withSamples(context -> Lists.newList("1", "5", "10")))
             .withFlag(CommandFlags.silent())

@@ -44,6 +44,8 @@ public class RedisSyncManager {
     private String channel;
     private volatile boolean active;
 
+    private final Set<String> crossServerPlayerNames = new HashSet<>();
+
     public RedisSyncManager(@NotNull CratesPlugin plugin) {
         this.plugin = plugin;
         this.gson = new GsonBuilder()
@@ -330,6 +332,8 @@ public class RedisSyncManager {
 
         this.subscriberThread.setDaemon(true);
         this.subscriberThread.start();
+
+        this.plugin.getFoliaScheduler().runTimerAsync(this::syncPlayerNames, 0L, 600L);
     }
 
     private void handleIncoming(@NotNull String message) {
@@ -356,6 +360,7 @@ public class RedisSyncManager {
                 case "GIVE_PHYSICAL_KEY_WITH_UUID" -> applyGivePhysicalKeyWithUuid(data);
                 case "KEY_DELIVERY_NOTIFICATION" -> applyKeyDeliveryNotification(data);
                 case "OPENING_STATE_CLEANUP" -> applyOpeningStateCleanup(data);
+                case "PLAYER_NAMES_UPDATE" -> applyPlayerNamesUpdate(data);
                 default -> {}
             }
         }
@@ -561,5 +566,58 @@ public class RedisSyncManager {
                                " due to cross-server event: " + reason + " from " + origin);
             }
         });
+    }
+
+    public void publishPlayerNames(@NotNull Set<String> playerNames) {
+        if (!isActive()) return;
+
+        JsonObject data = new JsonObject();
+        JsonArray namesArray = new JsonArray();
+        playerNames.forEach(namesArray::add);
+        data.add("playerNames", namesArray);
+        data.addProperty("timestamp", System.currentTimeMillis());
+
+        publish("PLAYER_NAMES_UPDATE", data);
+    }
+
+    private void syncPlayerNames() {
+        if (!isActive()) return;
+
+        Set<String> localPlayerNames = new HashSet<>();
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            localPlayerNames.add(player.getName());
+        }
+
+        if (!localPlayerNames.isEmpty()) {
+            publishPlayerNames(localPlayerNames);
+        }
+    }
+
+    private void applyPlayerNamesUpdate(@NotNull JsonObject data) {
+        JsonArray namesArray = data.getAsJsonArray("playerNames");
+
+        synchronized (this.crossServerPlayerNames) {
+            this.crossServerPlayerNames.clear();
+
+            for (int i = 0; i < namesArray.size(); i++) {
+                String playerName = namesArray.get(i).getAsString();
+                this.crossServerPlayerNames.add(playerName);
+            }
+        }
+    }
+
+    @NotNull
+    public Set<String> getAllPlayerNames() {
+        Set<String> allNames = new HashSet<>();
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            allNames.add(player.getName());
+        }
+
+        synchronized (this.crossServerPlayerNames) {
+            allNames.addAll(this.crossServerPlayerNames);
+        }
+
+        return allNames;
     }
 }

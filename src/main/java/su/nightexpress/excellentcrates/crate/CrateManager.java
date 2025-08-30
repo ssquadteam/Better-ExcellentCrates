@@ -179,6 +179,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
     private void runInspections() {
         this.getCrates().forEach(crate -> {
             String filePath = crate.getFile().getPath();
+            crate.validateBlockPositions();
 
             Inspectors.CRATE.printConsole(plugin, crate, "Problems in '" + crate.getId() + "' crate (" + filePath + "):");
 

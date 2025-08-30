@@ -146,12 +146,6 @@ public class Crate extends AbstractFileData<CratesPlugin> {
         this.setKeyIds(config.getStringSet("Key.Ids"));
 
         this.blockPositions.addAll(config.getStringList("Block.Positions").stream().map(WorldPos::deserialize).toList());
-        if (!Config.isCrateInAirBlocksAllowed()) {
-            this.blockPositions.removeIf(pos -> {
-                Block block = pos.toBlock();
-                return block != null && block.isEmpty();
-            });
-        }
 
         this.setPushbackEnabled(config.getBoolean("Block.Pushback.Enabled"));
         this.setHologramEnabled(config.getBoolean("Block.Hologram.Enabled"));
@@ -493,6 +487,19 @@ public class Crate extends AbstractFileData<CratesPlugin> {
     public void clearBlockPositions() {
         this.plugin.getCrateManager().removeCratePositions(this);
         this.blockPositions.clear();
+    }
+
+    /**
+     * Validates and removes invalid block positions (air blocks if not allowed).
+     * This method should be called after plugin loading to avoid Folia threading issues.
+     */
+    public void validateBlockPositions() {
+        if (!Config.isCrateInAirBlocksAllowed()) {
+            this.blockPositions.removeIf(pos -> {
+                Block block = pos.toBlock();
+                return block != null && block.isEmpty();
+            });
+        }
     }
 
     @NotNull

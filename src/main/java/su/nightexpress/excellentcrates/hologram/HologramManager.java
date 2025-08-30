@@ -41,7 +41,7 @@ public class HologramManager extends AbstractManager<CratesPlugin> {
         if (this.detectHandler()) {
             this.addListener(new HologramListener(this.plugin, this));
 
-            this.plugin.getFoliaScheduler().runTimerAsync(this::tickHolograms, 0L, Config.CRATE_HOLOGRAM_UPDATE_INTERVAL.get());
+            this.plugin.getFoliaScheduler().runTimer(this::tickHolograms, 0L, Config.CRATE_HOLOGRAM_UPDATE_INTERVAL.get());
         }
     }
 
@@ -213,21 +213,25 @@ public class HologramManager extends AbstractManager<CratesPlugin> {
         double lineGap = Config.CRATE_HOLOGRAM_LINE_GAP.get();
 
         crate.getBlockPositions().forEach(blockPos -> {
-            Block block = blockPos.toBlock();
-            if (block == null) return;
+            Location location = blockPos.toLocation();
+            if (location == null) return;
 
-            double height = block.getBoundingBox().getHeight() / 2D + yOffset;
+            this.plugin.runAtLocation(location, () -> {
+                Block block = blockPos.toBlock();
+                if (block == null) return;
 
-            // Allocate ID values for our fake entities, so there is no clash with new server entities.
+                double height = block.getBoundingBox().getHeight() / 2D + yOffset;
 
-            FakeEntityGroup group = display.getGroupOrCreate(blockPos);
+                // Allocate ID values for our fake entities, so there is no clash with new server entities.
+                FakeEntityGroup group = display.getGroupOrCreate(blockPos);
 
-            for (int index = 0; index < originText.size(); index++) {
-                double gap = lineGap * index;
+                for (int index = 0; index < originText.size(); index++) {
+                    double gap = lineGap * index;
 
-                Location location = LocationUtil.setCenter3D(block.getLocation()).add(0, height + gap, 0);
-                group.addEntity(FakeEntity.create(location));
-            }
+                    Location hologramLocation = LocationUtil.setCenter3D(block.getLocation()).add(0, height + gap, 0);
+                    group.addEntity(FakeEntity.create(hologramLocation));
+                }
+            });
         });
 
         this.displayMap.put(crate.getId(), display);

@@ -24,6 +24,7 @@ import su.nightexpress.excellentcrates.config.Lang;
 import su.nightexpress.excellentcrates.crate.CrateManager;
 import su.nightexpress.excellentcrates.crate.impl.Crate;
 import su.nightexpress.excellentcrates.util.ClickType;
+import su.nightexpress.excellentcrates.util.FoliaBlockUtils;
 import su.nightexpress.excellentcrates.util.InteractType;
 import su.nightexpress.nightcore.manager.AbstractListener;
 import su.nightexpress.nightcore.util.time.TimeFormatType;
@@ -88,7 +89,7 @@ public class CrateListener extends AbstractListener<CratesPlugin> {
         if (clickAction == null) return;
 
         // Uh, adventure gamemode triggers LEFT_CLICK interaction on interactable blocks together with RIGHT_CLICK interaction.
-        if (player.getGameMode() == GameMode.ADVENTURE && block != null && block.getType().isInteractable()) {
+        if (player.getGameMode() == GameMode.ADVENTURE && block != null && FoliaBlockUtils.isBlockInteractableSafe(block)) {
             if (action == Action.RIGHT_CLICK_BLOCK) {
                 this.adventureFix.add(player.getUniqueId());
             }

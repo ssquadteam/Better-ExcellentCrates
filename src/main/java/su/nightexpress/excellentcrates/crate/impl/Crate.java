@@ -25,6 +25,7 @@ import su.nightexpress.excellentcrates.hologram.HologramTemplate;
 import su.nightexpress.excellentcrates.item.ItemTypes;
 import su.nightexpress.excellentcrates.key.CrateKey;
 import su.nightexpress.excellentcrates.util.CrateUtils;
+import su.nightexpress.excellentcrates.util.FoliaBlockUtils;
 import su.nightexpress.excellentcrates.util.pos.WorldPos;
 import su.nightexpress.nightcore.config.FileConfig;
 import su.nightexpress.nightcore.manager.AbstractFileData;
@@ -509,7 +510,7 @@ public class Crate extends AbstractFileData<CratesPlugin> {
 
                 this.plugin.runAtLocation(location, () -> {
                     Block block = pos.toBlock();
-                    if (block != null && block.isEmpty()) {
+                    if (block != null && FoliaBlockUtils.isBlockEmptySafe(block)) {
                         invalidPositions.add(pos);
                     }
                 });

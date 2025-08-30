@@ -1,5 +1,6 @@
 package su.nightexpress.excellentcrates;
 
+import org.bukkit.Material;
 import org.bukkit.block.Block;
 import su.nightexpress.excellentcrates.api.crate.Reward;
 import su.nightexpress.excellentcrates.api.item.ItemProvider;
@@ -13,6 +14,7 @@ import su.nightexpress.excellentcrates.crate.limit.LimitValues;
 import su.nightexpress.excellentcrates.crate.reward.impl.CommandReward;
 import su.nightexpress.excellentcrates.crate.reward.impl.ItemReward;
 import su.nightexpress.excellentcrates.key.CrateKey;
+import su.nightexpress.excellentcrates.util.FoliaBlockUtils;
 import su.nightexpress.excellentcrates.util.inspect.Inspection;
 import su.nightexpress.excellentcrates.util.inspect.Inspectors;
 import su.nightexpress.nightcore.language.LangAssets;
@@ -156,7 +158,9 @@ public class Placeholders extends su.nightexpress.nightcore.util.Placeholders {
                     Block block = worldPos.toBlock();
                     if (block == null) return Lang.badEntry("null");
 
-                    String name = Tags.LIGHT_ORANGE.wrap(LangAssets.get(block.getType()));
+                    Material blockType = FoliaBlockUtils.getBlockTypeSafe(block);
+                    boolean isEmpty = FoliaBlockUtils.isBlockEmptySafe(block);
+                    String name = Tags.LIGHT_ORANGE.wrap(LangAssets.get(blockType));
 
                     String x = Tags.LIGHT_ORANGE.wrap(NumberUtil.format(worldPos.getX()));
                     String y = Tags.LIGHT_ORANGE.wrap(NumberUtil.format(worldPos.getY()));
@@ -165,7 +169,7 @@ public class Placeholders extends su.nightexpress.nightcore.util.Placeholders {
                     String coords = x + ", " + y + ", " + z + " in " + world;
                     String line = coords + " (" + name + ")";
 
-                    return block.isEmpty() && !Config.isCrateInAirBlocksAllowed() ? Lang.badEntry(line) : Lang.goodEntry(line);
+                    return isEmpty && !Config.isCrateInAirBlocksAllowed() ? Lang.badEntry(line) : Lang.goodEntry(line);
                 }).collect(Collectors.joining("\n"));
             })
             .add(CRATE_EFFECT_MODEL, crate -> StringUtil.capitalizeUnderscored(crate.getEffectType()))

@@ -27,7 +27,7 @@ public class OpeningListener extends AbstractListener<CratesPlugin> {
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
 
-        this.plugin.runTaskLater(() -> {
+        this.plugin.getFoliaScheduler().runLater(() -> {
             if (this.manager.isOpening(player)) {
                 this.manager.stopOpening(player);
                 this.plugin.info("Cleaned up stale opening state for " + player.getName() + " on join");

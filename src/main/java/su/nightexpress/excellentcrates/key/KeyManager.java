@@ -175,11 +175,23 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
             }
         }
 
+        Set<UUID> alreadyValidated = new HashSet<>();
+
         for (ItemStack itemStack : content) {
             CrateKey key = itemStack == null ? null : this.getKeyByItem(itemStack);
             if (key != null && crate.isGoodKey(key)) {
-                if (!key.isVirtual() && !this.validateKeyItem(itemStack, player)) {
-                    continue; // Skip invalid/duped keys
+                if (!key.isVirtual()) {
+                    UUID keyUuid = this.plugin.getUuidAntiDupeManager().getKeyUuid(itemStack);
+                    if (keyUuid != null && alreadyValidated.contains(keyUuid)) {
+                        continue;
+                    }
+                    if (keyUuid != null) {
+                        alreadyValidated.add(keyUuid);
+                    }
+
+                    if (!this.validateKeyItem(itemStack, player)) {
+                        continue;
+                    }
                 }
                 return key;
             }
@@ -301,9 +313,11 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
             this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
         }
         else {
-            ItemStack keyItem = key.getItem();
-            keyItem.setAmount(amount < 0 ? Math.abs(amount) : amount);
-            Players.addItem(player, keyItem);
+            int actualAmount = amount < 0 ? Math.abs(amount) : amount;
+            for (int i = 0; i < actualAmount; i++) {
+                ItemStack keyItem = key.getItem();
+                Players.addItem(player, keyItem);
+            }
         }
     }
 

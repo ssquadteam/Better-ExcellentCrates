@@ -515,7 +515,7 @@ public class Crate extends AbstractFileData<CratesPlugin> {
                 });
             });
 
-            this.plugin.runLater(() -> {
+            this.plugin.getFoliaScheduler().runLater(() -> {
                 this.blockPositions.removeAll(invalidPositions);
                 if (!invalidPositions.isEmpty()) {
                     this.plugin.info("Removed " + invalidPositions.size() + " invalid air block positions from crate '" + this.getId() + "'");

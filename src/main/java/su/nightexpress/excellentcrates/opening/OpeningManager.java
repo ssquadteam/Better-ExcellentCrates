@@ -164,6 +164,10 @@ public class OpeningManager extends AbstractManager<CratesPlugin> {
         if (opening == null) return;
 
         opening.stop();
+
+        this.plugin.getRedisSyncManager().ifPresent(sync ->
+            sync.publishOpeningStateCleanup(player.getUniqueId(), "player_quit")
+        );
     }
 
     @Nullable

@@ -15,7 +15,9 @@ import su.nightexpress.nightcore.lib.redis.jedis.JedisPool;
 import su.nightexpress.nightcore.lib.redis.jedis.JedisPubSub;
 import su.nightexpress.nightcore.lib.commons.pool2.impl.GenericObjectPoolConfig;
 import su.nightexpress.excellentcrates.CratesPlugin;
+import su.nightexpress.excellentcrates.Placeholders;
 import su.nightexpress.excellentcrates.config.Config;
+import su.nightexpress.excellentcrates.config.Lang;
 import su.nightexpress.excellentcrates.data.crate.GlobalCrateData;
 import su.nightexpress.excellentcrates.data.crate.UserCrateData;
 import su.nightexpress.excellentcrates.data.reward.RewardLimit;
@@ -255,6 +257,37 @@ public class RedisSyncManager {
         publish("GIVE_PHYSICAL_KEY_WITH_UUID", d);
     }
 
+    /**
+     * Publishes key delivery notification across servers
+     */
+    public void publishKeyDeliveryNotification(@NotNull UUID playerId, @NotNull String keyId, int amount, @NotNull String origin) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("playerId", playerId.toString());
+        d.addProperty("keyId", keyId);
+        d.addProperty("amount", amount);
+        d.addProperty("origin", origin);
+        d.addProperty("timestamp", System.currentTimeMillis());
+
+        publish("KEY_DELIVERY_NOTIFICATION", d);
+    }
+
+    /**
+     * Publishes crate opening state cleanup across servers
+     */
+    public void publishOpeningStateCleanup(@NotNull UUID playerId, @NotNull String reason) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("playerId", playerId.toString());
+        d.addProperty("reason", reason);
+        d.addProperty("origin", this.nodeId);
+        d.addProperty("timestamp", System.currentTimeMillis());
+
+        publish("OPENING_STATE_CLEANUP", d);
+    }
+
     private void publish(@NotNull String type, @NotNull JsonObject data) {
         if (!isActive()) return;
 
@@ -321,6 +354,8 @@ public class RedisSyncManager {
                 case "KEY_UUID_REGISTERED" -> applyKeyUuidRegistered(data);
                 case "KEY_UUID_USED" -> applyKeyUuidUsed(data);
                 case "GIVE_PHYSICAL_KEY_WITH_UUID" -> applyGivePhysicalKeyWithUuid(data);
+                case "KEY_DELIVERY_NOTIFICATION" -> applyKeyDeliveryNotification(data);
+                case "OPENING_STATE_CLEANUP" -> applyOpeningStateCleanup(data);
                 default -> {}
             }
         }
@@ -484,6 +519,46 @@ public class RedisSyncManager {
                 // Give keys with pre-generated UUIDs
                 this.plugin.getKeyManager().givePhysicalKeysWithUuids(player, key, amount, keyUuids);
                 this.plugin.info("Gave physical key '" + keyId + "' x" + amount + " with UUIDs to " + player.getName() + " via Redis request from " + origin + ".");
+
+                publishKeyDeliveryNotification(playerId, keyId, amount, origin);
+            }
+        });
+    }
+
+    private void applyKeyDeliveryNotification(@NotNull JsonObject data) {
+        UUID playerId = UUID.fromString(data.get("playerId").getAsString());
+        String keyId = data.get("keyId").getAsString();
+        int amount = data.get("amount").getAsInt();
+        String origin = data.get("origin").getAsString();
+
+        this.plugin.runTask(task -> {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null) return;
+
+            CrateKey key = this.plugin.getKeyManager().getKeyById(keyId);
+            if (key == null) return;
+
+            Lang.COMMAND_KEY_GIVE_NOTIFY.getMessage().send(player, replacer -> replacer
+                .replace(Placeholders.GENERIC_AMOUNT, amount)
+                .replace(key.replacePlaceholders())
+            );
+
+            this.plugin.info("Sent cross-server key delivery notification to " + player.getName() +
+                           " for " + amount + "x " + keyId + " from server " + origin);
+        });
+    }
+
+    private void applyOpeningStateCleanup(@NotNull JsonObject data) {
+        UUID playerId = UUID.fromString(data.get("playerId").getAsString());
+        String reason = data.get("reason").getAsString();
+        String origin = data.get("origin").getAsString();
+
+        this.plugin.runTask(task -> {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                this.plugin.getOpeningManager().stopOpening(player);
+                this.plugin.info("Cleaned up opening state for " + player.getName() +
+                               " due to cross-server event: " + reason + " from " + origin);
             }
         });
     }

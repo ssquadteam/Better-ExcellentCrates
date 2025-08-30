@@ -6,6 +6,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryOpenEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.jetbrains.annotations.NotNull;
 import su.nightexpress.excellentcrates.CratesPlugin;
@@ -20,6 +21,18 @@ public class OpeningListener extends AbstractListener<CratesPlugin> {
     public OpeningListener(@NotNull CratesPlugin plugin, @NotNull OpeningManager manager) {
         super(plugin);
         this.manager = manager;
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onJoin(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+
+        this.plugin.runTaskLater(() -> {
+            if (this.manager.isOpening(player)) {
+                this.manager.stopOpening(player);
+                this.plugin.info("Cleaned up stale opening state for " + player.getName() + " on join");
+            }
+        }, 20L);
     }
 
     @EventHandler(priority = EventPriority.NORMAL)

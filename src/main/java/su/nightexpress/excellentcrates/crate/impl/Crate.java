@@ -38,6 +38,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -492,13 +493,34 @@ public class Crate extends AbstractFileData<CratesPlugin> {
     /**
      * Validates and removes invalid block positions (air blocks if not allowed).
      * This method should be called after plugin loading to avoid Folia threading issues.
+     * Uses location-specific scheduling for Folia compatibility.
      */
     public void validateBlockPositions() {
         if (!Config.isCrateInAirBlocksAllowed()) {
-            this.blockPositions.removeIf(pos -> {
-                Block block = pos.toBlock();
-                return block != null && block.isEmpty();
+            Set<WorldPos> positionsToCheck = new HashSet<>(this.blockPositions);
+            Set<WorldPos> invalidPositions = ConcurrentHashMap.newKeySet();
+
+            positionsToCheck.forEach(pos -> {
+                Location location = pos.toLocation();
+                if (location == null) {
+                    invalidPositions.add(pos);
+                    return;
+                }
+
+                this.plugin.runAtLocation(location, () -> {
+                    Block block = pos.toBlock();
+                    if (block != null && block.isEmpty()) {
+                        invalidPositions.add(pos);
+                    }
+                });
             });
+
+            this.plugin.runLater(() -> {
+                this.blockPositions.removeAll(invalidPositions);
+                if (!invalidPositions.isEmpty()) {
+                    this.plugin.info("Removed " + invalidPositions.size() + " invalid air block positions from crate '" + this.getId() + "'");
+                }
+            }, 20L);
         }
     }
 

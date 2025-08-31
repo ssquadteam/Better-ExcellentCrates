@@ -279,6 +279,34 @@ public class DataHandler extends AbstractUserDataManager<CratesPlugin, CrateUser
     }
 
     /**
+     * Loads valid key UUIDs with their creation times.
+     */
+    @NotNull
+    public Map<UUID, Long> loadValidKeyUuidCreationTimes() {
+        Map<UUID, Long> map = new HashMap<>();
+        String sql = "SELECT keyUuid, creationTime FROM " + this.tableKeyUuids;
+
+        try (var connection = this.getConnector().getConnection();
+             var statement = connection.prepareStatement(sql);
+             var resultSet = statement.executeQuery()) {
+
+            while (resultSet.next()) {
+                String uuidStr = resultSet.getString("keyUuid");
+                long created = resultSet.getLong("creationTime");
+                try {
+                    map.put(UUID.fromString(uuidStr), created);
+                } catch (IllegalArgumentException e) {
+                    this.plugin.warn("Invalid UUID in database: " + uuidStr);
+                }
+            }
+        } catch (SQLException e) {
+            this.plugin.error("Failed to load valid key UUID creation times: " + e.getMessage());
+        }
+
+        return map;
+    }
+
+    /**
      * Loads all used key UUIDs from database
      */
     @NotNull

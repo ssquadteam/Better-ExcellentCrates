@@ -104,6 +104,26 @@ public class CrateKey extends AbstractFileData<CratesPlugin> {
             this.plugin.getUuidAntiDupeManager().injectUuid(item);
         }
 
+        try {
+            java.util.UUID uuid = this.plugin.getUuidAntiDupeManager().getKeyUuid(item);
+            if (uuid != null) {
+                long created = this.plugin.getUuidAntiDupeManager().getCreationTime(uuid);
+                su.nightexpress.nightcore.util.ItemReplacer.create(item)
+                    .readMeta()
+                    .replace(su.nightexpress.excellentcrates.Placeholders.KEY_UUID, () -> uuid.toString())
+                    .replace(su.nightexpress.excellentcrates.Placeholders.KEY_CREATION_TIME, () -> {
+                        if (created <= 0) return "-";
+                        java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern(su.nightexpress.excellentcrates.config.Config.LOGS_DATE_FORMAT.get());
+                        return java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(created), java.time.ZoneId.systemDefault()).format(fmt);
+                    })
+                    .replace(su.nightexpress.excellentcrates.Placeholders.KEY_VALID_CHECK, () -> {
+                        boolean valid = this.isVirtual() || this.plugin.getUuidAntiDupeManager().isValidUnusedUuid(uuid);
+                        return valid ? "✔" : "✖";
+                    })
+                    .writeMeta();
+            }
+        } catch (Throwable ignored) {}
+
         return item;
     }
 

@@ -70,6 +70,15 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
     }
 
     /**
+     * Returns creation timestamp for a key UUID, if known.
+     * @param keyUuid UUID of the key
+     * @return millis since epoch or -1 if unknown
+     */
+    public long getCreationTime(@NotNull UUID keyUuid) {
+        return this.uuidCreationTimes.getOrDefault(keyUuid, -1L);
+    }
+
+    /**
      * Gets the UUID from a key item
      * @param keyItem The key item to extract UUID from
      * @return The UUID if present, null otherwise
@@ -179,11 +188,13 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
     private void loadValidUuids() {
         this.plugin.runTaskAsync(() -> {
             Set<UUID> validUuids = this.plugin.getDataHandler().loadValidKeyUuids();
+            java.util.Map<UUID, Long> creationTimes = this.plugin.getDataHandler().loadValidKeyUuidCreationTimes();
             Set<UUID> usedUuids = this.plugin.getDataHandler().loadUsedKeyUuids();
             
             this.plugin.runTask(task -> {
                 this.validKeyUuids.addAll(validUuids);
                 this.usedKeyUuids.addAll(usedUuids);
+                this.uuidCreationTimes.putAll(creationTimes);
                 this.plugin.info("Loaded " + validUuids.size() + " valid UUIDs and " + usedUuids.size() + " used UUIDs");
             });
         });

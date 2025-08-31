@@ -316,6 +316,25 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
             int actualAmount = amount < 0 ? Math.abs(amount) : amount;
             for (int i = 0; i < actualAmount; i++) {
                 ItemStack keyItem = key.getItem();
+                try {
+                    java.util.UUID uuid = this.plugin.getUuidAntiDupeManager().getKeyUuid(keyItem);
+                    if (uuid != null) {
+                        long created = this.plugin.getUuidAntiDupeManager().getCreationTime(uuid);
+                        su.nightexpress.nightcore.util.ItemReplacer.create(keyItem)
+                            .readMeta()
+                            .replace(su.nightexpress.excellentcrates.Placeholders.KEY_UUID, () -> uuid.toString())
+                            .replace(su.nightexpress.excellentcrates.Placeholders.KEY_CREATION_TIME, () -> {
+                                if (created <= 0) return "-";
+                                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern(su.nightexpress.excellentcrates.config.Config.LOGS_DATE_FORMAT.get());
+                                return java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(created), java.time.ZoneId.systemDefault()).format(fmt);
+                            })
+                            .replace(su.nightexpress.excellentcrates.Placeholders.KEY_VALID_CHECK, () -> {
+                                boolean valid = this.plugin.getUuidAntiDupeManager().isValidUnusedUuid(uuid);
+                                return valid ? "✔" : "✖";
+                            })
+                            .writeMeta();
+                    }
+                } catch (Throwable ignored) {}
                 Players.addItem(player, keyItem);
             }
         }
@@ -427,6 +446,26 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
                 PDCUtil.set(meta, Keys.keyId, key.getId());
                 PDCUtil.set(meta, Keys.keyUuid, uuidIterator.next());
             });
+
+            try {
+                java.util.UUID uuid = this.plugin.getUuidAntiDupeManager().getKeyUuid(keyItem);
+                if (uuid != null) {
+                    long created = this.plugin.getUuidAntiDupeManager().getCreationTime(uuid);
+                    su.nightexpress.nightcore.util.ItemReplacer.create(keyItem)
+                        .readMeta()
+                        .replace(su.nightexpress.excellentcrates.Placeholders.KEY_UUID, () -> uuid.toString())
+                        .replace(su.nightexpress.excellentcrates.Placeholders.KEY_CREATION_TIME, () -> {
+                            if (created <= 0) return "-";
+                            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern(su.nightexpress.excellentcrates.config.Config.LOGS_DATE_FORMAT.get());
+                            return java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(created), java.time.ZoneId.systemDefault()).format(fmt);
+                        })
+                        .replace(su.nightexpress.excellentcrates.Placeholders.KEY_VALID_CHECK, () -> {
+                            boolean valid = this.plugin.getUuidAntiDupeManager().isValidUnusedUuid(uuid);
+                            return valid ? "✔" : "✖";
+                        })
+                        .writeMeta();
+                }
+            } catch (Throwable ignored) {}
 
             Players.addItem(player, keyItem);
         }

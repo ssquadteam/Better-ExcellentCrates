@@ -4,6 +4,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.MenuType;
 import org.jetbrains.annotations.NotNull;
 import su.nightexpress.excellentcrates.CratesPlugin;
@@ -22,6 +23,7 @@ import su.nightexpress.nightcore.ui.menu.item.ItemHandler;
 import su.nightexpress.nightcore.ui.menu.item.ItemOptions;
 import su.nightexpress.nightcore.ui.menu.item.MenuItem;
 import su.nightexpress.nightcore.ui.menu.type.LinkedMenu;
+import su.nightexpress.nightcore.util.ItemUtil;
 import su.nightexpress.nightcore.util.Lists;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
 import su.nightexpress.nightcore.util.placeholder.Replacer;
@@ -117,9 +119,15 @@ public class PreviewMenu extends LinkedMenu<CratesPlugin, CrateSource> implement
                 restrictions.addAll(this.noPermissionLore);
             }
 
-            return NightItem.fromItemStack(reward.getPreviewItem())
-                .ignoreNameAndLore()
-                .setDisplayName(this.rewardName)
+            ItemStack previewItem = reward.getPreviewItem();
+            NightItem nightItem = NightItem.fromItemStack(previewItem);
+
+            String originalDisplayName = ItemUtil.getCustomNameSerialized(previewItem);
+            if (originalDisplayName == null || originalDisplayName.trim().isEmpty()) {
+                nightItem.setDisplayName(this.rewardName);
+            }
+
+            return nightItem
                 .setLore(this.rewardLore)
                 .replacement(replacer -> {
                         replacer

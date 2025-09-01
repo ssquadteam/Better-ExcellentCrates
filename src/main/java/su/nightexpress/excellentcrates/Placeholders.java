@@ -158,21 +158,12 @@ public class Placeholders extends su.nightexpress.nightcore.util.Placeholders {
             .add(CRATE_HOLOGRAM_Y_OFFSET, crate -> NumberUtil.format(crate.getHologramYOffset()))
             .add(CRATE_LOCATIONS, crate -> {
                 return crate.getBlockPositions().stream().map(worldPos -> {
-                    Block block = worldPos.toBlock();
-                    if (block == null) return Lang.badEntry("null");
-
-                    Material blockType = FoliaBlockUtils.getBlockTypeSafe(block);
-                    boolean isEmpty = FoliaBlockUtils.isBlockEmptySafe(block);
-                    String name = Tags.LIGHT_ORANGE.wrap(LangAssets.get(blockType));
-
                     String x = Tags.LIGHT_ORANGE.wrap(NumberUtil.format(worldPos.getX()));
                     String y = Tags.LIGHT_ORANGE.wrap(NumberUtil.format(worldPos.getY()));
                     String z = Tags.LIGHT_ORANGE.wrap(NumberUtil.format(worldPos.getZ()));
                     String world = Tags.LIGHT_ORANGE.wrap(worldPos.getWorldName());
                     String coords = x + ", " + y + ", " + z + " in " + world;
-                    String line = coords + " (" + name + ")";
-
-                    return isEmpty && !Config.isCrateInAirBlocksAllowed() ? Lang.badEntry(line) : Lang.goodEntry(line);
+                    return Lang.goodEntry(coords);
                 }).collect(Collectors.joining("\n"));
             })
             .add(CRATE_EFFECT_MODEL, crate -> StringUtil.capitalizeUnderscored(crate.getEffectType()))

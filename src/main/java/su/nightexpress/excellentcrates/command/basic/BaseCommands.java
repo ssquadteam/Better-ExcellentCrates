@@ -61,6 +61,7 @@ public class BaseCommands {
                 .permission(Perms.COMMAND_KEY_GIVE)
                 .withArgument(CommandArguments.forKey(plugin).required())
                 .withArgument(ArgumentTypes.integerAbs(CommandArguments.AMOUNT).localized(Lang.COMMAND_ARGUMENT_NAME_AMOUNT).withSamples(context -> Lists.newList("1", "5", "10")))
+                .withArgument(ArgumentTypes.world(CommandArguments.WORLD))
                 .withFlag(CommandFlags.silent())
                 .withFlag(CommandFlags.silentFeedback())
                 .executes((context, arguments) -> giveKeyAll(plugin, context, arguments))
@@ -308,9 +309,11 @@ public class BaseCommands {
         if (amount == 0) return false;
 
         boolean silent = arguments.hasFlag(CommandFlags.SILENT);
+        World targetWorld = arguments.getWorldArgument(CommandArguments.WORLD);
 
         Players.getOnline().forEach(player -> {
             if (!player.hasPermission(Perms.INCLUDE_KEY_GIVEALL)) return;
+            if (targetWorld != null && !player.getWorld().equals(targetWorld)) return;
 
             plugin.getKeyManager().giveKey(player, key, amount);
 

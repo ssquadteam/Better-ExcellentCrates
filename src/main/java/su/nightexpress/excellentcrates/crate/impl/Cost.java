@@ -17,6 +17,10 @@ public class Cost {
         this.setAmount(amount);
     }
 
+    public Cost(@NotNull String currencyId, @NotNull java.math.BigDecimal amount) {
+        this(currencyId, amount.doubleValue());
+    }
+
     public boolean isValid() {
         return this.isVailidCurrency() && this.isValidAmount();
     }
@@ -54,11 +58,9 @@ public class Cost {
         return this.currencyId;
     }
 
-    public double getAmount() {
-        return this.amount;
-    }
+    public double getAmount() { return this.amount; }
 
-    public void setAmount(double amount) {
-        this.amount = Math.max(0, amount);
-    }
+    public void setAmount(double amount) { this.amount = Math.max(0, amount); }
+
+    public void setAmount(@NotNull java.math.BigDecimal amount) { this.setAmount(amount.doubleValue()); }
 }

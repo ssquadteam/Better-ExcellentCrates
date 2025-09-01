@@ -30,17 +30,13 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     private DataHandler dataHandler;
     private DataManager dataManager;
     private UserManager userManager;
-
     private HologramManager hologramManager;
     private OpeningManager  openingManager;
     private KeyManager      keyManager;
     private UuidAntiDupeManager uuidAntiDupeManager;
     private CrateManager    crateManager;
-    //private MenuManager     menuManager;
     private EditorManager   editorManager;
-
     private RedisSyncManager redisSyncManager;
-
     private CrateLogger     crateLogger;
 
     @Override
@@ -79,11 +75,6 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
         this.userManager = new UserManager(this, this.dataHandler);
         this.userManager.setup();
 
-        if (Config.HOLOGRAMS_ENABLED.get()) {
-            this.hologramManager = new HologramManager(this);
-            this.hologramManager.setup();
-        }
-
         this.openingManager = new OpeningManager(this);
         this.openingManager.setup();
 
@@ -96,9 +87,6 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
         this.crateManager = new CrateManager(this);
         this.crateManager.setup();
 
-//        this.menuManager = new MenuManager(this);
-//        this.menuManager.setup();
-
         this.editorManager = new EditorManager(this);
         this.editorManager.setup();
 
@@ -110,6 +98,11 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
         if (Plugins.hasPlaceholderAPI()) {
             PlaceholderHook.setup(this);
         }
+
+        if (Config.HOLOGRAMS_ENABLED.get()) {
+            this.hologramManager = new HologramManager(this);
+            this.hologramManager.setup();
+        }
     }
 
     @Override
@@ -119,7 +112,6 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
         if (this.uuidAntiDupeManager != null) this.uuidAntiDupeManager.shutdown();
         if (this.keyManager != null) this.keyManager.shutdown();
         if (this.crateManager != null) this.crateManager.shutdown();
-        //if (this.menuManager != null) this.menuManager.shutdown();
         if (this.hologramManager != null) this.hologramManager.shutdown();
         if (this.userManager != null) this.userManager.shutdown();
         if (this.dataManager != null) this.dataManager.shutdown();
@@ -158,18 +150,8 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     }
 
     @NotNull
-    public Optional<HologramManager> getHologramManager() {
-        return Optional.ofNullable(this.hologramManager);
-    }
-
-    @NotNull
     public CrateLogger getCrateLogger() {
         return this.crateLogger;
-    }
-
-    @NotNull
-    public Optional<RedisSyncManager> getRedisSyncManager() {
-        return Optional.ofNullable(this.redisSyncManager);
     }
 
     @NotNull
@@ -212,8 +194,13 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
         return this.crateManager;
     }
 
-//    @NotNull
-//    public MenuManager getMenuManager() {
-//        return this.menuManager;
-//    }
+    @NotNull
+    public Optional<RedisSyncManager> getRedisSyncManager() {
+        return Optional.ofNullable(this.redisSyncManager);
+    }
+
+    @NotNull
+    public Optional<HologramManager> getHologramManager() {
+        return Optional.ofNullable(this.hologramManager);
+    }
 }

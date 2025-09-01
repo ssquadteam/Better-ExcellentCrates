@@ -72,6 +72,8 @@ jobs:
             echo >> RELEASE_NOTES.md
             git log --pretty=format:'- %s (%h)' -n 100 >> RELEASE_NOTES.md || true
           fi
+          echo >> RELEASE_NOTES.md
+          echo "[SWITCH TO BETTER-NIGHTCORE](https://github.com/ssquadteam/Better-NightCore/releases)" >> RELEASE_NOTES.md
           echo "notes_file=RELEASE_NOTES.md" >> $GITHUB_OUTPUT
 
       - name: Create or update GitHub Release

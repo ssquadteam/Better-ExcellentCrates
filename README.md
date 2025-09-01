@@ -56,7 +56,7 @@
 
 **OPTIONAL:**
 - [EconomyBridge](https://nightexpressdev.com/economy-bridge/) - For custom item and open cost support.
-- [ProtocolLib](https://ci.dmulloy2.net/job/ProtocolLib/) or [PacketEvents](https://spigotmc.org/resources/80279/) - For crate holograms.
+- [PacketEvents](https://spigotmc.org/resources/80279/) - For crate holograms.
 
 # Downloads & Documentation
 - [SpigotMC](https://spigotmc.org/resources/48732/)

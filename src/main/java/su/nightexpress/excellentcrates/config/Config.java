@@ -209,7 +209,7 @@ public class Config {
     public static final ConfigValue<Boolean> HOLOGRAMS_ENABLED = ConfigValue.create("Holograms.Enabled",
         true,
         "Controls whether the Holograms feature is available.",
-        "[*] One of the following plugins is required for holograms to work: " + HookId.PACKET_EVENTS + " or " + HookId.PROTOCOL_LIB
+        "[*] PacketEvents is required for holograms to work: " + HookId.PACKET_EVENTS
     );
 
     public static final ConfigValue<Boolean> OPENINGS_GUI_SIMULATE_REAL_CHANCES = ConfigValue.create("Openings.GUI.Simulate_Real_Chances",

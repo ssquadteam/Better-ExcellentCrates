@@ -13,7 +13,6 @@ import su.nightexpress.excellentcrates.hologram.entity.FakeDisplay;
 import su.nightexpress.excellentcrates.hologram.entity.FakeEntity;
 import su.nightexpress.excellentcrates.hologram.entity.FakeEntityGroup;
 import su.nightexpress.excellentcrates.hologram.handler.HologramPacketsHandler;
-import su.nightexpress.excellentcrates.hologram.handler.HologramProtocolHandler;
 import su.nightexpress.excellentcrates.hologram.listener.HologramListener;
 import su.nightexpress.excellentcrates.hooks.HookId;
 import su.nightexpress.excellentcrates.util.CrateUtils;
@@ -57,13 +56,10 @@ public class HologramManager extends AbstractManager<CratesPlugin> {
         if (Plugins.isInstalled(HookId.PACKET_EVENTS)) {
             this.handler = new HologramPacketsHandler();
         }
-        else if (Plugins.isInstalled(HookId.PROTOCOL_LIB)) {
-            this.handler = new HologramProtocolHandler();
-        }
         else {
             this.plugin.warn("*".repeat(25));
-            this.plugin.warn("You have no packet library plugins installed for the Holograms feature to work.");
-            this.plugin.warn("Please install one of the following plugins to enable crate holograms: " + HookId.PACKET_EVENTS + " or " + HookId.PROTOCOL_LIB);
+            this.plugin.warn("You have no packet library plugin installed for the Holograms feature to work.");
+            this.plugin.warn("Please install PacketEvents (" + HookId.PACKET_EVENTS + ") to enable crate holograms.");
             this.plugin.warn("*".repeat(25));
         }
 

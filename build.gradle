@@ -20,10 +20,6 @@ repositories {
         url = 'https://repo.nightexpressdev.com/releases'
     }
     maven {
-        name = 'dmulloy2-repo'
-        url = 'https://repo.dmulloy2.net/repository/public/'
-    }
-    maven {
         name = 'jitpack'
         url = 'https://jitpack.io'
     }
@@ -47,7 +43,6 @@ repositories {
 dependencies {
     compileOnly 'io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT'
     compileOnly name: 'nightcore-2.7.17', version: "2.7.17"
-    compileOnly 'com.comphenix.protocol:ProtocolLib:5.4.0'
     compileOnly 'com.github.retrooper:packetevents-spigot:2.9.0'
     compileOnly 'me.clip:placeholderapi:2.11.6'
     compileOnly 'su.nightexpress.economybridge:economy-bridge:1.2.1' 

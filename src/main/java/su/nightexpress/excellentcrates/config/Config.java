@@ -264,4 +264,20 @@ public class Config {
     public static boolean isKeyHoldRequired() {
         return CRATE_HOLD_KEY_TO_OPEN.get();
     }
+
+    public static final ConfigValue<Integer> ANTI_DUPE_CACHE_MAX_VALID = ConfigValue.create("Data.AntiDupe.Cache.MaxValid",
+        100_000,
+        "Maximum number of recently-seen valid key UUIDs to keep in memory.",
+        "This is a bounded LRU cache; older entries are evicted automatically.",
+        "Set higher on small servers, lower on large servers to cap RAM usage.");
+
+    public static final ConfigValue<Integer> ANTI_DUPE_CACHE_MAX_USED = ConfigValue.create("Data.AntiDupe.Cache.MaxUsed",
+        100_000,
+        "Maximum number of recently used key UUIDs to keep in memory.",
+        "This is a bounded LRU cache; older entries are evicted automatically.");
+
+    public static final ConfigValue<Integer> ANTI_DUPE_CACHE_MAX_CREATION_TIMES = ConfigValue.create("Data.AntiDupe.Cache.MaxCreationTimes",
+        100_000,
+        "Maximum number of key UUID creation timestamps to cache in memory.",
+        "This is a bounded LRU cache; older entries are evicted automatically.");
 }

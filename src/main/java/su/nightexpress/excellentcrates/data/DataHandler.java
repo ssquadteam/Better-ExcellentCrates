@@ -252,6 +252,45 @@ public class DataHandler extends AbstractUserDataManager<CratesPlugin, CrateUser
     }
 
     /**
+     * Checks whether a key UUID exists and whether it has been used.
+     * @return null if UUID not found, true if used, false if exists and not used
+     */
+    public Boolean isKeyUuidUsed(@NotNull UUID keyUuid) {
+        String sql = "SELECT isUsed FROM " + this.tableKeyUuids + " WHERE keyUuid = ?";
+        try (var connection = this.getConnector().getConnection();
+             var statement = connection.prepareStatement(sql)) {
+            statement.setString(1, keyUuid.toString());
+            try (var resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) return null;
+                return resultSet.getBoolean("isUsed");
+            }
+        } catch (SQLException e) {
+            this.plugin.error("Failed to check key UUID usage: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Loads creation time for a single UUID.
+     * @return millis since epoch, or null if not found
+     */
+    public Long getKeyUuidCreationTime(@NotNull UUID keyUuid) {
+        String sql = "SELECT creationTime FROM " + this.tableKeyUuids + " WHERE keyUuid = ?";
+        try (var connection = this.getConnector().getConnection();
+             var statement = connection.prepareStatement(sql)) {
+            statement.setString(1, keyUuid.toString());
+            try (var resultSet = statement.executeQuery()) {
+                if (!resultSet.next()) return null;
+                long created = resultSet.getLong("creationTime");
+                return created > 0 ? created : null;
+            }
+        } catch (SQLException e) {
+            this.plugin.error("Failed to get key UUID creation time: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * Loads all valid (registered) key UUIDs from database
      */
     @NotNull

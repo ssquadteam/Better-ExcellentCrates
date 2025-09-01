@@ -65,8 +65,8 @@ public class AntiDupeCommands {
         sender.sendMessage("§eKeys Generated: §f" + stats[0]);
         sender.sendMessage("§cDupe Attempts: §f" + stats[1]);
         sender.sendMessage("§aValid Usages: §f" + stats[2]);
-        sender.sendMessage("§bValid UUIDs in System: §f" + stats[3]);
-        sender.sendMessage("§7Used UUIDs: §f" + stats[4]);
+        sender.sendMessage("§bValid UUIDs in Cache: §f" + stats[3]);
+        sender.sendMessage("§7Used UUIDs in Cache: §f" + stats[4]);
         
         if (stats[0] > 0) {
             double dupeRate = (double) stats[1] / stats[0] * 100;

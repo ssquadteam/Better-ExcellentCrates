@@ -5,33 +5,39 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import su.nightexpress.excellentcrates.CratesPlugin;
+import su.nightexpress.excellentcrates.config.Config;
 import su.nightexpress.excellentcrates.config.Keys;
 import su.nightexpress.nightcore.manager.AbstractManager;
 import su.nightexpress.nightcore.util.PDCUtil;
 
-import java.util.HashSet;
-import java.util.Set;
+import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * UUID Anti-Dupe Manager for ExcellentCrates
  */
 public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
 
-    private final Set<UUID> validKeyUuids;
-    private final Set<UUID> usedKeyUuids;
-    private final ConcurrentHashMap<UUID, Long> uuidCreationTimes;
-    
+    private final Map<UUID, Boolean> validKeyCache;
+    private final Map<UUID, Boolean> usedKeyCache;
+    private final Map<UUID, Long> creationTimeCache;
+
     private long totalKeysGenerated;
     private long totalDupeAttempts;
     private long totalValidUsages;
 
     public UuidAntiDupeManager(@NotNull CratesPlugin plugin) {
         super(plugin);
-        this.validKeyUuids = ConcurrentHashMap.newKeySet();
-        this.usedKeyUuids = ConcurrentHashMap.newKeySet();
-        this.uuidCreationTimes = new ConcurrentHashMap<>();
+        int maxValid = Math.max(1, Config.ANTI_DUPE_CACHE_MAX_VALID.get());
+        int maxUsed = Math.max(1, Config.ANTI_DUPE_CACHE_MAX_USED.get());
+        int maxCreated = Math.max(1, Config.ANTI_DUPE_CACHE_MAX_CREATION_TIMES.get());
+
+        this.validKeyCache = createLruMap(maxValid);
+        this.usedKeyCache = createLruMap(maxUsed);
+        this.creationTimeCache = createLruMap(maxCreated);
+
         this.totalKeysGenerated = 0;
         this.totalDupeAttempts = 0;
         this.totalValidUsages = 0;
@@ -39,16 +45,16 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
 
     @Override
     protected void onLoad() {
-        this.loadValidUuids();
-        this.plugin.info("UUID Anti-Dupe system loaded with " + this.validKeyUuids.size() + " valid UUIDs.");
+        this.plugin.info("UUID Anti-Dupe LRU caches initialized (valid: " + this.validKeyCache.size() + 
+            ", used: " + this.usedKeyCache.size() + ", created: " + this.creationTimeCache.size() + ").");
     }
 
     @Override
     protected void onShutdown() {
         this.saveData();
-        this.validKeyUuids.clear();
-        this.usedKeyUuids.clear();
-        this.uuidCreationTimes.clear();
+        this.validKeyCache.clear();
+        this.usedKeyCache.clear();
+        this.creationTimeCache.clear();
     }
 
     /**
@@ -60,9 +66,9 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
     public UUID injectUuid(@NotNull ItemStack keyItem) {
         UUID keyUuid = UUID.randomUUID();
         PDCUtil.set(keyItem, Keys.keyUuid, keyUuid);
-        
+
         this.registerValidUuid(keyUuid);
-        
+
         this.totalKeysGenerated++;
         this.plugin.debug("Injected UUID " + keyUuid + " into key item");
         
@@ -75,7 +81,14 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
      * @return millis since epoch or -1 if unknown
      */
     public long getCreationTime(@NotNull UUID keyUuid) {
-        return this.uuidCreationTimes.getOrDefault(keyUuid, -1L);
+        Long cached = this.creationTimeCache.get(keyUuid);
+        if (cached != null) return cached;
+        Long fromDb = this.plugin.getDataHandler().getKeyUuidCreationTime(keyUuid);
+        if (fromDb != null) {
+            this.creationTimeCache.put(keyUuid, fromDb);
+            return fromDb;
+        }
+        return -1L;
     }
 
     /**
@@ -103,19 +116,7 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
             return false;
         }
 
-        if (!this.validKeyUuids.contains(keyUuid)) {
-            this.totalDupeAttempts++;
-            this.plugin.warn("ANTI-DUPE: Invalid key UUID detected: " + keyUuid + 
-                (player != null ? " (Player: " + player.getName() + ")" : ""));
-            
-            if (player != null) {
-                this.notifyAdminsOfDupeAttempt(player, keyUuid);
-            }
-            
-            return false;
-        }
-
-        if (this.usedKeyUuids.contains(keyUuid)) {
+        if (Boolean.TRUE.equals(this.usedKeyCache.get(keyUuid))) {
             this.totalDupeAttempts++;
             this.plugin.warn("ANTI-DUPE: Already used key UUID detected: " + keyUuid + 
                 (player != null ? " (Player: " + player.getName() + ")" : ""));
@@ -127,6 +128,29 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
             return false;
         }
 
+        if (Boolean.TRUE.equals(this.validKeyCache.get(keyUuid))) {
+            this.totalValidUsages++;
+            return true;
+        }
+
+        Boolean used = this.plugin.getDataHandler().isKeyUuidUsed(keyUuid);
+        if (used == null) {
+            this.totalDupeAttempts++;
+            this.plugin.warn("ANTI-DUPE: Invalid key UUID detected: " + keyUuid +
+                (player != null ? " (Player: " + player.getName() + ")" : ""));
+            if (player != null) this.notifyAdminsOfDupeAttempt(player, keyUuid);
+            return false;
+        }
+        if (used) {
+            this.usedKeyCache.put(keyUuid, Boolean.TRUE);
+            this.totalDupeAttempts++;
+            this.plugin.warn("ANTI-DUPE: Already used key UUID detected: " + keyUuid +
+                (player != null ? " (Player: " + player.getName() + ")" : ""));
+            if (player != null) this.notifyAdminsOfDupeAttempt(player, keyUuid);
+            return false;
+        }
+
+        this.validKeyCache.put(keyUuid, Boolean.TRUE);
         this.totalValidUsages++;
         return true;
     }
@@ -136,7 +160,8 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
      * @param keyUuid The UUID to mark as used
      */
     public void markKeyAsUsed(@NotNull UUID keyUuid) {
-        this.usedKeyUuids.add(keyUuid);
+        this.usedKeyCache.put(keyUuid, Boolean.TRUE);
+        this.validKeyCache.remove(keyUuid);
         this.plugin.runTaskAsync(() -> {
             this.plugin.getDataHandler().markKeyUuidAsUsed(keyUuid);
             this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishKeyUuidUsed(keyUuid));
@@ -149,9 +174,10 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
      * @param keyUuid The UUID to register
      */
     public void registerValidUuid(@NotNull UUID keyUuid) {
-        this.validKeyUuids.add(keyUuid);
-        this.uuidCreationTimes.put(keyUuid, System.currentTimeMillis());
-        
+        long now = System.currentTimeMillis();
+        this.validKeyCache.put(keyUuid, Boolean.TRUE);
+        this.creationTimeCache.put(keyUuid, now);
+
         this.plugin.runTaskAsync(() -> {
             this.plugin.getDataHandler().insertKeyUuid(keyUuid);
             this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishKeyUuidRegistered(keyUuid));
@@ -164,12 +190,21 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
      * @return true if valid and unused
      */
     public boolean isValidUnusedUuid(@NotNull UUID keyUuid) {
-        return this.validKeyUuids.contains(keyUuid) && !this.usedKeyUuids.contains(keyUuid);
+        if (Boolean.TRUE.equals(this.usedKeyCache.get(keyUuid))) return false;
+        if (Boolean.TRUE.equals(this.validKeyCache.get(keyUuid))) return true;
+        Boolean used = this.plugin.getDataHandler().isKeyUuidUsed(keyUuid);
+        if (used == null) return false;
+        if (used) {
+            this.usedKeyCache.put(keyUuid, Boolean.TRUE);
+            return false;
+        }
+        this.validKeyCache.put(keyUuid, Boolean.TRUE);
+        return true;
     }
 
     /**
      * Gets statistics about the anti-dupe system
-     * @return Array of statistics [generated, dupeAttempts, validUsages, validUuids, usedUuids]
+     * @return Array of statistics [generated, dupeAttempts, validUsages, cachedValid, cachedUsed]
      */
     @NotNull
     public long[] getStatistics() {
@@ -177,8 +212,8 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
             this.totalKeysGenerated,
             this.totalDupeAttempts,
             this.totalValidUsages,
-            this.validKeyUuids.size(),
-            this.usedKeyUuids.size()
+            this.validKeyCache.size(),
+            this.usedKeyCache.size()
         };
     }
 
@@ -186,18 +221,6 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
      * Loads valid UUIDs from database
      */
     private void loadValidUuids() {
-        this.plugin.runTaskAsync(() -> {
-            Set<UUID> validUuids = this.plugin.getDataHandler().loadValidKeyUuids();
-            java.util.Map<UUID, Long> creationTimes = this.plugin.getDataHandler().loadValidKeyUuidCreationTimes();
-            Set<UUID> usedUuids = this.plugin.getDataHandler().loadUsedKeyUuids();
-            
-            this.plugin.runTask(task -> {
-                this.validKeyUuids.addAll(validUuids);
-                this.usedKeyUuids.addAll(usedUuids);
-                this.uuidCreationTimes.putAll(creationTimes);
-                this.plugin.info("Loaded " + validUuids.size() + " valid UUIDs and " + usedUuids.size() + " used UUIDs");
-            });
-        });
     }
 
     /**
@@ -229,11 +252,22 @@ public class UuidAntiDupeManager extends AbstractManager<CratesPlugin> {
     }
 
     public void applyExternalKeyUuidRegistered(@NotNull UUID keyUuid) {
-        this.validKeyUuids.add(keyUuid);
-        this.uuidCreationTimes.put(keyUuid, System.currentTimeMillis());
+        this.validKeyCache.put(keyUuid, Boolean.TRUE);
+        this.creationTimeCache.put(keyUuid, System.currentTimeMillis());
     }
 
     public void applyExternalKeyUuidUsed(@NotNull UUID keyUuid) {
-        this.usedKeyUuids.add(keyUuid);
+        this.usedKeyCache.put(keyUuid, Boolean.TRUE);
+        this.validKeyCache.remove(keyUuid);
+    }
+
+    private static <K, V> Map<K, V> createLruMap(int maxEntries) {
+        LinkedHashMap<K, V> delegate = new LinkedHashMap<>(16, 0.75f, true) {
+            @Override
+            protected boolean removeEldestEntry(Map.Entry<K, V> eldest) {
+                return this.size() > maxEntries;
+            }
+        };
+        return Collections.synchronizedMap(delegate);
     }
 }

@@ -32,11 +32,16 @@ public class HologramPacketsHandler implements HologramHandler {
     }
 
     private void sendPacket(@NotNull Player player, @NotNull PacketWrapper<?> packet) {
-        this.playerManager.sendPacket(player, packet);
+        if (!player.isOnline() || !player.isValid()) return;
+        try {
+            this.playerManager.sendPacket(player, packet);
+        }
+        catch (Throwable ignored) {
+        }
     }
 
     private void broadcastPacket(@NotNull PacketWrapper<?> packet) {
-        Players.getOnline().forEach(player -> this.playerManager.sendPacket(player, packet));
+        Players.getOnline().forEach(player -> this.sendPacket(player, packet));
     }
 
 

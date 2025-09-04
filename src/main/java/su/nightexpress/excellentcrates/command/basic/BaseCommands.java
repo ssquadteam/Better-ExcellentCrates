@@ -104,7 +104,7 @@ public class BaseCommands {
         root.addChildren(DirectNode.builder(plugin, "give")
             .description(Lang.COMMAND_GIVE_DESC)
             .permission(Perms.COMMAND_GIVE)
-            .withArgument(ArgumentTypes.player(CommandArguments.PLAYER).required())
+            .withArgument(CommandArguments.crossServerPlayerName(plugin).required())
             .withArgument(CommandArguments.forCrate(plugin).required())
             .withArgument(ArgumentTypes.integerAbs(CommandArguments.AMOUNT).localized(Lang.COMMAND_ARGUMENT_NAME_AMOUNT).withSamples(context -> Lists.newList("1", "5", "10")))
             .withFlag(CommandFlags.silent())
@@ -193,25 +193,38 @@ public class BaseCommands {
     }
 
     private static boolean giveCrate(@NotNull CratesPlugin plugin, @NotNull CommandContext context, @NotNull ParsedArguments arguments) {
-        Player player = arguments.getPlayerArgument(CommandArguments.PLAYER);
         Crate crate = arguments.getArgument(CommandArguments.CRATE, Crate.class);
         int amount = arguments.getIntArgument(CommandArguments.AMOUNT, 1);
+        if (amount <= 0) return false;
 
-        plugin.getCrateManager().giveCrateItem(player, crate, amount);
+        plugin.getUserManager().manageUser(arguments.getStringArgument(CommandArguments.PLAYER), user -> {
+            if (user == null) {
+                context.errorBadPlayer();
+                return;
+            }
 
-        if (!arguments.hasFlag(CommandFlags.SILENT)) {
-            Lang.COMMAND_GIVE_NOTIFY.getMessage().send(player, replacer -> replacer
-                .replace(Placeholders.GENERIC_AMOUNT, amount)
-                .replace(crate.replacePlaceholders())
-            );
-        }
-        if (!arguments.hasFlag(CommandFlags.SILENT_FEEDBACK) && context.getSender() != player) {
-            Lang.COMMAND_GIVE_DONE.getMessage().send(context.getSender(), replacer -> replacer
-                .replace(Placeholders.forPlayer(player))
-                .replace(Placeholders.GENERIC_AMOUNT, amount)
-                .replace(crate.replacePlaceholders())
-            );
-        }
+            Player online = user.getPlayer();
+            if (online != null) {
+                plugin.getCrateManager().giveCrateItem(online, crate, amount);
+                if (!arguments.hasFlag(CommandFlags.SILENT)) {
+                    Lang.COMMAND_GIVE_NOTIFY.getMessage().send(online, replacer -> replacer
+                        .replace(Placeholders.GENERIC_AMOUNT, amount)
+                        .replace(crate.replacePlaceholders())
+                    );
+                }
+            }
+            else {
+                plugin.getCrateManager().giveCrateItemCrossServer(crate, user.getId(), amount);
+            }
+
+            if (!arguments.hasFlag(CommandFlags.SILENT_FEEDBACK)) {
+                Lang.COMMAND_GIVE_DONE.getMessage().send(context.getSender(), replacer -> replacer
+                    .replace(Placeholders.PLAYER_NAME, user.getName())
+                    .replace(Placeholders.GENERIC_AMOUNT, amount)
+                    .replace(crate.replacePlaceholders())
+                );
+            }
+        });
         return true;
     }
 

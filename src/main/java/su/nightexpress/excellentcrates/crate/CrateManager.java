@@ -349,6 +349,21 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
         Players.addItem(player, crateItem, amount);
     }
 
+    public boolean giveCrateItemCrossServer(@NotNull Crate crate, @NotNull UUID playerId, int amount) {
+        Player player = org.bukkit.Bukkit.getPlayer(playerId);
+        if (player != null) {
+            this.giveCrateItem(player, crate, amount);
+            return true;
+        }
+
+        return this.plugin.getRedisSyncManager()
+            .map(sync -> {
+                sync.publishGiveCrateItem(crate.getId(), playerId, amount);
+                return true;
+            })
+            .orElse(false);
+    }
+
     public void previewCrate(@NotNull Player player, @NotNull CrateSource source) {
         Crate crate = source.getCrate();
         if (!crate.isPreviewEnabled()) return;

@@ -34,34 +34,39 @@ public class CratePlacementMenu extends LinkedMenu<CratesPlugin, Crate> {
             this.runNextTick(() -> this.plugin.getEditorManager().openOptionsMenu(viewer.getPlayer(), this.getLink(viewer)));
         }));
 
-        if (plugin.hasHolograms()) {
-            this.addItem(Material.LIME_DYE, EditorLang.CRATE_EDIT_HOLOGRAM_TOGGLE, 10, (viewer, event, crate) -> {
-                crate.removeHologram();
-                crate.setHologramEnabled(!crate.isHologramEnabled());
-                crate.createHologram();
-                this.saveAndFlush(viewer, crate);
-            }, ItemOptions.builder().setDisplayModifier((viewer, item) -> {
+        this.addItem(Material.LIME_DYE, EditorLang.CRATE_EDIT_HOLOGRAM_TOGGLE, 10, (viewer, event, crate) -> {
+            crate.removeHologram();
+            crate.setHologramEnabled(!crate.isHologramEnabled());
+            crate.createHologram();
+            this.saveAndFlush(viewer, crate);
+        }, ItemOptions.builder()
+            .setDisplayModifier((viewer, item) -> {
                 if (!this.getLink(viewer).isHologramEnabled()) item.setMaterial(Material.GRAY_DYE);
-            }).build());
+            })
+            .setVisibilityPolicy(viewer -> this.plugin.hasHolograms())
+            .build());
 
-            this.addItem(Material.ARMOR_STAND, EditorLang.CRATE_EDIT_HOLOGRAM_TEMPLATE, 11, (viewer, event, crate) -> {
-                this.handleInput(Dialog.builder(viewer, Lang.EDITOR_ENTER_HOLOGRAM_TEMPLATE, input -> {
-                    crate.setHologramTemplateId(input.getTextRaw());
-                    crate.recreateHologram();
-                    crate.saveSettings();
-                    return true;
-                }).setSuggestions(Config.getHologramTemplateIds(), true));
-            });
+        this.addItem(Material.ARMOR_STAND, EditorLang.CRATE_EDIT_HOLOGRAM_TEMPLATE, 11, (viewer, event, crate) -> {
+            this.handleInput(Dialog.builder(viewer, Lang.EDITOR_ENTER_HOLOGRAM_TEMPLATE, input -> {
+                crate.setHologramTemplateId(input.getTextRaw());
+                crate.recreateHologram();
+                crate.saveSettings();
+                return true;
+            }).setSuggestions(Config.getHologramTemplateIds(), true));
+        }, ItemOptions.builder()
+            .setVisibilityPolicy(viewer -> this.plugin.hasHolograms())
+            .build());
 
-            this.addItem(Material.LADDER, EditorLang.CRATE_EDIT_HOLOGRAM_OFFSET, 12, (viewer, event, crate) -> {
-                this.handleInput(Dialog.builder(viewer, Lang.EDITOR_ENTER_VALUE, input -> {
-                    crate.setHologramYOffset(input.asDouble(0D));
-                    crate.recreateHologram();
-                    crate.saveSettings();
-                    return true;
-                }));
-            });
-        }
+        this.addItem(Material.LADDER, EditorLang.CRATE_EDIT_HOLOGRAM_OFFSET, 12, (viewer, event, crate) -> {
+            this.handleInput(Dialog.builder(viewer, Lang.EDITOR_ENTER_VALUE, input -> {
+                crate.setHologramYOffset(input.asDouble(0D));
+                crate.recreateHologram();
+                crate.saveSettings();
+                return true;
+            }));
+        }, ItemOptions.builder()
+            .setVisibilityPolicy(viewer -> this.plugin.hasHolograms())
+            .build());
 
 
 

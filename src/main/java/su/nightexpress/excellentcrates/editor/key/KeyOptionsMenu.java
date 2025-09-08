@@ -50,7 +50,7 @@ public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> {
                 .build());
         });
 
-        this.addItem(Material.NAME_TAG, EditorLang.KEY_EDIT_NAME, 19, (viewer, event, key) -> {
+        this.addItem(Material.NAME_TAG, EditorLang.KEY_EDIT_NAME, 20, (viewer, event, key) -> {
             this.handleInput(Dialog.builder(viewer, Lang.EDITOR_ENTER_DISPLAY_NAME, input -> {
                 key.setName(input.getText());
                 key.save();
@@ -58,7 +58,7 @@ public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> {
             }));
         });
 
-        this.addItem(Material.TRIPWIRE_HOOK, EditorLang.KEY_EDIT_ITEM, 23, (viewer, event, key) -> {
+        this.addItem(Material.TRIPWIRE_HOOK, EditorLang.KEY_EDIT_ITEM, 22, (viewer, event, key) -> {
             ItemStack cursor = event.getCursor();
             if (cursor == null || cursor.getType().isAir()) {
                 if (event.isLeftClick()) {
@@ -93,7 +93,7 @@ public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> {
 
         }, ItemOptions.builder().setVisibilityPolicy(viewer -> !this.getLink(viewer).isVirtual()).build());
 
-        this.addItem(Material.ENDER_PEARL, EditorLang.KEY_EDIT_VIRTUAL, 25, (viewer, event, key) -> {
+        this.addItem(Material.ENDER_PEARL, EditorLang.KEY_EDIT_VIRTUAL, 24, (viewer, event, key) -> {
             key.setVirtual(!key.isVirtual());
             this.saveAndFlush(viewer);
         });

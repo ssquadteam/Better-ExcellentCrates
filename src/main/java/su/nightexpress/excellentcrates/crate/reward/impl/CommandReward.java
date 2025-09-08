@@ -74,12 +74,18 @@ public class CommandReward extends AbstractReward {
     public void giveContent(@NotNull Player player) {
         Replacer replacer = this.createContentReplacer(player);
 
+        List<String> processedCommands = new ArrayList<>();
         this.getCommands().forEach(command -> {
             if (this.placeholderApply) {
                 command = replacer.apply(command);
             }
+            processedCommands.add(command);
+        });
 
-            Players.dispatchCommand(player, command);
+        this.plugin.runAtEntity(player, () -> {
+            processedCommands.forEach(command -> {
+                Players.dispatchCommand(player, command);
+            });
         });
     }
 

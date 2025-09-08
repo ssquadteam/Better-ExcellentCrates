@@ -88,7 +88,6 @@ public class Placeholders extends su.nightexpress.nightcore.util.Placeholders {
     public static final String KEY_ID             = "%key_id%";
     public static final String KEY_NAME           = "%key_name%";
     public static final String KEY_VIRTUAL        = "%key_virtual%";
-    public static final String KEY_ITEM_STACKABLE = "%key_item_stackable%";
     public static final String KEY_UUID           = "%key_uuid%";
     public static final String KEY_CREATION_TIME  = "%key_creation_time%";
     public static final String KEY_VALID_CHECK    = "%key_valid_check%";
@@ -262,7 +261,6 @@ public class Placeholders extends su.nightexpress.nightcore.util.Placeholders {
             .add(KEY_ID, CrateKey::getId)
             .add(KEY_NAME, CrateKey::getName)
             .add(KEY_VIRTUAL, key -> Lang.getYesOrNo(key.isVirtual()))
-            .add(KEY_ITEM_STACKABLE, key -> Lang.getYesOrNo(key.isItemStackable()))
             .add(KEY_UUID, key -> "-")
             .add(KEY_CREATION_TIME, key -> "-")
             .add(KEY_VALID_CHECK, key -> "-");

@@ -297,12 +297,6 @@ public class Lang extends CoreLang {
         .click("toggle")
         .build();
 
-    public static final LangUIButton EDITOR_BUTTON_KEY_ITEM_STACKABLE = LangUIButton.builder("Editor.Button.Key.ItemStackable", "Item Stackable")
-        .current(KEY_ITEM_STACKABLE)
-        .description("Controls whether key item is stackable.")
-        .click("toggle")
-        .build();
-
     public static final LangUIButton EDITOR_BUTTON_SORT_REWARDS = LangUIButton.builder("Editor.Button.Reward.SortMode", GENERIC_MODE)
         .description("Sort reward by their " + LIGHT_YELLOW.wrap(GENERIC_MODE) + ".")
         .leftClick("ascending")

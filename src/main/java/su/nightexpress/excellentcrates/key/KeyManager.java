@@ -442,7 +442,6 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
         for (int i = 0; i < amount && uuidIterator.hasNext(); i++) {
             ItemStack keyItem = key.getRawItem();
             ItemUtil.editMeta(keyItem, meta -> {
-                if (!key.isItemStackable()) meta.setMaxStackSize(1);
                 PDCUtil.set(meta, Keys.keyId, key.getId());
                 PDCUtil.set(meta, Keys.keyUuid, uuidIterator.next());
             });

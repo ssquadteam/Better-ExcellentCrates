@@ -29,8 +29,6 @@ import su.nightexpress.nightcore.util.bukkit.NightItem;
 
 public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> {
 
-    private static final String SKULL_STACK = "e2e7ac70bf77ba3dd33f4cb78d88ac149ac6036cef2eac8e7a6fd3676fbaf1aa";
-
     public KeyOptionsMenu(@NotNull CratesPlugin plugin) {
         super(plugin, MenuType.GENERIC_9X5, Lang.EDITOR_TITLE_KEY_LIST.getString());
 
@@ -60,7 +58,7 @@ public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> {
             }));
         });
 
-        this.addItem(Material.TRIPWIRE_HOOK, EditorLang.KEY_EDIT_ITEM, 21, (viewer, event, key) -> {
+        this.addItem(Material.TRIPWIRE_HOOK, EditorLang.KEY_EDIT_ITEM, 23, (viewer, event, key) -> {
             ItemStack cursor = event.getCursor();
             if (cursor == null || cursor.getType().isAir()) {
                 if (event.isLeftClick()) {
@@ -93,11 +91,6 @@ public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> {
 
             event.getView().setCursor(null);
 
-        }, ItemOptions.builder().setVisibilityPolicy(viewer -> !this.getLink(viewer).isVirtual()).build());
-
-        this.addItem(NightItem.asCustomHead(SKULL_STACK), Lang.EDITOR_BUTTON_KEY_ITEM_STACKABLE, 23, (viewer, event, key) -> {
-            key.setItemStackable(!key.isItemStackable());
-            this.saveAndFlush(viewer);
         }, ItemOptions.builder().setVisibilityPolicy(viewer -> !this.getLink(viewer).isVirtual()).build());
 
         this.addItem(Material.ENDER_PEARL, EditorLang.KEY_EDIT_VIRTUAL, 25, (viewer, event, key) -> {

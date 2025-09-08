@@ -60,17 +60,19 @@ public class AntiDupeCommands {
 
     private static boolean executeStats(@NotNull CratesPlugin plugin, @NotNull CommandSender sender) {
         long[] stats = plugin.getUuidAntiDupeManager().getStatistics();
-
-        sender.sendMessage("§6=== Anti-Dupe Statistics ===");
-        sender.sendMessage("§eKeys Processed: §f" + stats[0]);
+        
+        sender.sendMessage("§6=== UUID Anti-Dupe Statistics ===");
+        sender.sendMessage("§eKeys Generated: §f" + stats[0]);
         sender.sendMessage("§cDupe Attempts: §f" + stats[1]);
-        sender.sendMessage("§7Recently Processed UUIDs: §f" + stats[2]);
-
+        sender.sendMessage("§aValid Usages: §f" + stats[2]);
+        sender.sendMessage("§bValid UUIDs in Cache: §f" + stats[3]);
+        sender.sendMessage("§7Used UUIDs in Cache: §f" + stats[4]);
+        
         if (stats[0] > 0) {
             double dupeRate = (double) stats[1] / stats[0] * 100;
             sender.sendMessage("§eDupe Attempt Rate: §f" + String.format("%.2f%%", dupeRate));
         }
-
+        
         return true;
     }
 
@@ -153,12 +155,12 @@ public class AntiDupeCommands {
     }
 
     private static boolean executeReload(@NotNull CratesPlugin plugin, @NotNull CommandSender sender) {
-        sender.sendMessage("§e[ExcellentCrates] Reloading Anti-Dupe system...");
-
+        sender.sendMessage("§e[ExcellentCrates] Reloading UUID Anti-Dupe system...");
+        
         plugin.getUuidAntiDupeManager().shutdown();
         plugin.getUuidAntiDupeManager().setup();
-
-        sender.sendMessage("§a[ExcellentCrates] Anti-Dupe system reloaded successfully!");
+        
+        sender.sendMessage("§a[ExcellentCrates] UUID Anti-Dupe system reloaded successfully!");
         return true;
     }
 }

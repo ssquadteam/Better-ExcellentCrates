@@ -215,20 +215,29 @@ public class RedisSyncManager {
     }
 
     /**
-     * Publishes dupe detection event across servers
+     * Publishes a new key UUID registration across servers
      */
-    public void publishDupeDetection(@NotNull UUID playerUuid, @NotNull String playerName,
-                                   @NotNull UUID keyUuid, @NotNull String detectionType) {
+    public void publishKeyUuidRegistered(@NotNull UUID keyUuid) {
         if (!isActive()) return;
 
         JsonObject d = new JsonObject();
-        d.addProperty("playerUuid", playerUuid.toString());
-        d.addProperty("playerName", playerName);
         d.addProperty("keyUuid", keyUuid.toString());
-        d.addProperty("detectionType", detectionType);
         d.addProperty("timestamp", System.currentTimeMillis());
 
-        publish("DUPE_DETECTION", d);
+        publish("KEY_UUID_REGISTERED", d);
+    }
+
+    /**
+     * Publishes a key UUID usage across servers
+     */
+    public void publishKeyUuidUsed(@NotNull UUID keyUuid) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("keyUuid", keyUuid.toString());
+        d.addProperty("timestamp", System.currentTimeMillis());
+
+        publish("KEY_UUID_USED", d);
     }
 
     /**
@@ -361,12 +370,13 @@ public class RedisSyncManager {
                 case "REWARD_LIMIT_UPSERT" -> applyRewardLimitUpsert(data);
                 case "REWARD_LIMIT_DELETE" -> applyRewardLimitDelete(data);
                 case "GIVE_PHYSICAL_KEY" -> applyGivePhysicalKey(data);
+                case "KEY_UUID_REGISTERED" -> applyKeyUuidRegistered(data);
+                case "KEY_UUID_USED" -> applyKeyUuidUsed(data);
                 case "GIVE_PHYSICAL_KEY_WITH_UUID" -> applyGivePhysicalKeyWithUuid(data);
                 case "KEY_DELIVERY_NOTIFICATION" -> applyKeyDeliveryNotification(data);
                 case "OPENING_STATE_CLEANUP" -> applyOpeningStateCleanup(data);
                 case "GIVE_CRATE_ITEM" -> applyGiveCrateItem(data);
                 case "PLAYER_NAMES_UPDATE" -> applyPlayerNamesUpdate(data);
-                case "DUPE_DETECTION" -> applyDupeDetection(data);
                 default -> {}
             }
         }
@@ -476,6 +486,31 @@ public class RedisSyncManager {
         });
     }
 
+    private void applyKeyUuidRegistered(@NotNull JsonObject data) {
+        String uuidStr = data.get("keyUuid").getAsString();
+
+        try {
+            UUID keyUuid = UUID.fromString(uuidStr);
+            this.plugin.runTask(task -> {
+                this.plugin.getUuidAntiDupeManager().applyExternalKeyUuidRegistered(keyUuid);
+            });
+        } catch (IllegalArgumentException e) {
+            this.plugin.warn("Invalid UUID received from Redis: " + uuidStr);
+        }
+    }
+
+    private void applyKeyUuidUsed(@NotNull JsonObject data) {
+        String uuidStr = data.get("keyUuid").getAsString();
+
+        try {
+            UUID keyUuid = UUID.fromString(uuidStr);
+            this.plugin.runTask(task -> {
+                this.plugin.getUuidAntiDupeManager().applyExternalKeyUuidUsed(keyUuid);
+            });
+        } catch (IllegalArgumentException e) {
+            this.plugin.warn("Invalid used UUID received from Redis: " + uuidStr);
+        }
+    }
 
     private void applyGivePhysicalKeyWithUuid(@NotNull JsonObject data) {
         UUID playerId = UUID.fromString(data.get("playerId").getAsString());
@@ -607,15 +642,6 @@ public class RedisSyncManager {
                 this.crossServerPlayerNames.add(playerName);
             }
         }
-    }
-
-    private void applyDupeDetection(@NotNull JsonObject data) {
-        UUID playerUuid = UUID.fromString(data.get("playerUuid").getAsString());
-        String playerName = data.get("playerName").getAsString();
-        UUID keyUuid = UUID.fromString(data.get("keyUuid").getAsString());
-        String detectionType = data.get("detectionType").getAsString();
-
-        this.plugin.getUuidAntiDupeManager().handleExternalDupeDetection(playerUuid, playerName, keyUuid, detectionType);
     }
 
     @NotNull

@@ -13,7 +13,7 @@ import su.nightexpress.excellentcrates.hologram.HologramManager;
 import su.nightexpress.excellentcrates.hooks.HookId;
 import su.nightexpress.excellentcrates.hooks.impl.PlaceholderHook;
 import su.nightexpress.excellentcrates.key.KeyManager;
-import su.nightexpress.excellentcrates.key.AntiDupeManager;
+import su.nightexpress.excellentcrates.key.UuidAntiDupeManager;
 import su.nightexpress.excellentcrates.opening.OpeningManager;
 import su.nightexpress.excellentcrates.opening.ProviderRegistry;
 import su.nightexpress.excellentcrates.user.UserManager;
@@ -33,7 +33,7 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     private HologramManager hologramManager;
     private OpeningManager  openingManager;
     private KeyManager      keyManager;
-    private AntiDupeManager uuidAntiDupeManager;
+    private UuidAntiDupeManager uuidAntiDupeManager;
     private CrateManager    crateManager;
     private EditorManager   editorManager;
     private RedisSyncManager redisSyncManager;
@@ -81,7 +81,7 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
         this.keyManager = new KeyManager(this);
         this.keyManager.setup();
 
-        this.uuidAntiDupeManager = new AntiDupeManager(this);
+        this.uuidAntiDupeManager = new UuidAntiDupeManager(this);
         this.uuidAntiDupeManager.setup();
 
         this.crateManager = new CrateManager(this);
@@ -185,7 +185,7 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     }
 
     @NotNull
-    public AntiDupeManager getUuidAntiDupeManager() {
+    public UuidAntiDupeManager getUuidAntiDupeManager() {
         return this.uuidAntiDupeManager;
     }
 

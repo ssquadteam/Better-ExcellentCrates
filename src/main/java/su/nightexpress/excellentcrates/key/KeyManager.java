@@ -316,19 +316,24 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
             int actualAmount = amount < 0 ? Math.abs(amount) : amount;
             for (int i = 0; i < actualAmount; i++) {
                 ItemStack keyItem = key.getItem();
-
-                UUID uuid = this.plugin.getUuidAntiDupeManager().injectUuid(keyItem);
-
                 try {
-                    su.nightexpress.nightcore.util.ItemReplacer.create(keyItem)
-                        .readMeta()
-                        .replace(su.nightexpress.excellentcrates.Placeholders.KEY_UUID, () -> uuid.toString())
-                        .replace(su.nightexpress.excellentcrates.Placeholders.KEY_CREATION_TIME, () -> {
-                            java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern(su.nightexpress.excellentcrates.config.Config.LOGS_DATE_FORMAT.get());
-                            return java.time.LocalDateTime.now().format(fmt);
-                        })
-                        .replace(su.nightexpress.excellentcrates.Placeholders.KEY_VALID_CHECK, () -> "✔")
-                        .writeMeta();
+                    java.util.UUID uuid = this.plugin.getUuidAntiDupeManager().getKeyUuid(keyItem);
+                    if (uuid != null) {
+                        long created = this.plugin.getUuidAntiDupeManager().getCreationTime(uuid);
+                        su.nightexpress.nightcore.util.ItemReplacer.create(keyItem)
+                            .readMeta()
+                            .replace(su.nightexpress.excellentcrates.Placeholders.KEY_UUID, () -> uuid.toString())
+                            .replace(su.nightexpress.excellentcrates.Placeholders.KEY_CREATION_TIME, () -> {
+                                if (created <= 0) return "-";
+                                java.time.format.DateTimeFormatter fmt = java.time.format.DateTimeFormatter.ofPattern(su.nightexpress.excellentcrates.config.Config.LOGS_DATE_FORMAT.get());
+                                return java.time.LocalDateTime.ofInstant(java.time.Instant.ofEpochMilli(created), java.time.ZoneId.systemDefault()).format(fmt);
+                            })
+                            .replace(su.nightexpress.excellentcrates.Placeholders.KEY_VALID_CHECK, () -> {
+                                boolean valid = this.plugin.getUuidAntiDupeManager().isValidUnusedUuid(uuid);
+                                return valid ? "✔" : "✖";
+                            })
+                            .writeMeta();
+                    }
                 } catch (Throwable ignored) {}
                 Players.addItem(player, keyItem);
             }
@@ -365,6 +370,8 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
             this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
         }
         else {
+            this.markPhysicalKeysAsUsed(player, key, amount);
+
             Predicate<ItemStack> predicate = this.getItemStackPredicate(key);
             int has = Players.countItem(player, predicate);
             if (has < amount) amount = has;
@@ -373,6 +380,25 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
         }
     }
 
+    /**
+     * Marks physical key UUIDs as used before consumption
+     */
+    private void markPhysicalKeysAsUsed(@NotNull Player player, @NotNull CrateKey key, int amount) {
+        PlayerInventory inventory = player.getInventory();
+        int marked = 0;
+
+        for (ItemStack item : inventory.getContents()) {
+            if (item == null || marked >= amount) break;
+
+            if (this.isKey(item, key)) {
+                UUID keyUuid = this.plugin.getUuidAntiDupeManager().getKeyUuid(item);
+                if (keyUuid != null) {
+                    this.plugin.getUuidAntiDupeManager().markKeyAsUsed(keyUuid);
+                    marked++;
+                }
+            }
+        }
+    }
 
     public boolean givePhysicalKeyCrossServer(@NotNull String keyId, @NotNull UUID playerId, int amount) {
         CrateKey key = this.getKeyById(keyId);
@@ -397,6 +423,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
                 for (int i = 0; i < amount; i++) {
                     UUID keyUuid = UUID.randomUUID();
                     keyUuids.add(keyUuid);
+                    this.plugin.getUuidAntiDupeManager().registerValidUuid(keyUuid);
                 }
 
                 sync.publishGivePhysicalKeyWithUuid(key.getId(), playerId, amount, keyUuids);

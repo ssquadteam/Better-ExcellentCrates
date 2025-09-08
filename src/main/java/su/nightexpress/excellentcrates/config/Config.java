@@ -265,19 +265,10 @@ public class Config {
         return CRATE_HOLD_KEY_TO_OPEN.get();
     }
 
-    public static final ConfigValue<Integer> ANTI_DUPE_CACHE_MAX_VALID = ConfigValue.create("Data.AntiDupe.Cache.MaxValid",
-        100_000,
-        "Maximum number of recently-seen valid key UUIDs to keep in memory.",
-        "This is a bounded LRU cache; older entries are evicted automatically.",
-        "Set higher on small servers, lower on large servers to cap RAM usage.");
-
-    public static final ConfigValue<Integer> ANTI_DUPE_CACHE_MAX_USED = ConfigValue.create("Data.AntiDupe.Cache.MaxUsed",
-        100_000,
-        "Maximum number of recently used key UUIDs to keep in memory.",
-        "This is a bounded LRU cache; older entries are evicted automatically.");
-
-    public static final ConfigValue<Integer> ANTI_DUPE_CACHE_MAX_CREATION_TIMES = ConfigValue.create("Data.AntiDupe.Cache.MaxCreationTimes",
-        100_000,
-        "Maximum number of key UUID creation timestamps to cache in memory.",
-        "This is a bounded LRU cache; older entries are evicted automatically.");
+    public static final ConfigValue<Double> ANTI_DUPE_PROXIMITY_RADIUS = ConfigValue.create("Data.AntiDupe.ProximityRadius",
+        0.0,
+        "EXPERIMENTAL: Radius in blocks to scan for duplicate key UUIDs around a player.",
+        "When a player uses a key, nearby players within this radius will be checked",
+        "for items with the same UUID to detect duplication attempts.",
+        "Set to 0 to disable nearby player scanning (only check player's own inventory).");
 }

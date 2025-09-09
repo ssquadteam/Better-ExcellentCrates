@@ -1,7 +1,6 @@
 package su.nightexpress.excellentcrates.hologram;
 
 import org.bukkit.Location;
-import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
@@ -15,24 +14,24 @@ import su.nightexpress.excellentcrates.hologram.entity.FakeEntityGroup;
 import su.nightexpress.excellentcrates.hologram.handler.HologramPacketsHandler;
 import su.nightexpress.excellentcrates.hologram.listener.HologramListener;
 import su.nightexpress.excellentcrates.hooks.HookId;
-import su.nightexpress.excellentcrates.util.CrateUtils;
 import su.nightexpress.excellentcrates.util.pos.WorldPos;
 import su.nightexpress.nightcore.manager.AbstractManager;
 import su.nightexpress.nightcore.util.LocationUtil;
 import su.nightexpress.nightcore.util.Plugins;
-import su.nightexpress.nightcore.util.placeholder.Replacer;
 
 import java.util.*;
 
 public class HologramManager extends AbstractManager<CratesPlugin> {
 
     private final Map<String, FakeDisplay> displayMap;
+    private final AsyncHologramProcessor asyncProcessor;
 
     private HologramHandler handler;
 
     public HologramManager(@NotNull CratesPlugin plugin) {
         super(plugin);
         this.displayMap = new HashMap<>();
+        this.asyncProcessor = new AsyncHologramProcessor();
     }
 
     @Override
@@ -40,7 +39,7 @@ public class HologramManager extends AbstractManager<CratesPlugin> {
         if (this.detectHandler()) {
             this.addListener(new HologramListener(this.plugin, this));
 
-            this.plugin.getFoliaScheduler().runTimer(this::tickHolograms, 0L, Config.CRATE_HOLOGRAM_UPDATE_INTERVAL.get());
+            this.startAsyncHologramTicker();
         }
     }
 
@@ -66,13 +65,44 @@ public class HologramManager extends AbstractManager<CratesPlugin> {
         return this.hasHandler();
     }
 
-    private void tickHolograms() {
-        if (this.plugin.getCrateManager() == null) return;
+    private void startAsyncHologramTicker() {
+        this.plugin.getFoliaScheduler().runTimerAsync(() -> {
+            if (this.plugin.getCrateManager() == null) return;
+            this.processHologramsAsync();
+        }, 0L, Config.CRATE_HOLOGRAM_UPDATE_INTERVAL.get());
+    }
+
+    private void processHologramsAsync() {
         this.plugin.getCrateManager().getCrates().forEach(crate -> {
             if (!crate.isHologramEnabled()) return;
 
-            this.render(crate);
+            try {
+                this.processHologramAsync(crate);
+            } catch (Exception e) {
+                this.plugin.error("Error processing hologram for crate " + crate.getId() + ": " + e.getMessage());
+                e.printStackTrace();
+            }
         });
+    }
+
+    private void processHologramAsync(@NotNull Crate crate) {
+        this.createIfAbsent(crate);
+
+        FakeDisplay display = this.getDisplay(crate);
+        if (display == null) return;
+
+        AsyncHologramUpdate update = this.asyncProcessor.processHologramAsync(crate, display);
+
+        if (update.hasUpdates()) {
+            this.plugin.getFoliaScheduler().runNextTick(() -> {
+                try {
+                    update.applyToMainThread(this.handler);
+                } catch (Exception e) {
+                    this.plugin.error("Error applying hologram update for crate " + crate.getId() + ": " + e.getMessage());
+                    e.printStackTrace();
+                }
+            });
+        }
     }
 
     public boolean hasHandler() {
@@ -145,55 +175,7 @@ public class HologramManager extends AbstractManager<CratesPlugin> {
 
 
     public void render(@NotNull Crate crate) {
-        this.createIfAbsent(crate);
-
-        FakeDisplay display = this.getDisplay(crate);
-        if (display == null) return;
-
-        List<String> text = Replacer.create().replace(crate.replacePlaceholders()).apply(crate.getHologramText().reversed());
-        if (text.isEmpty()) return;
-
-        for (FakeEntityGroup group : display.getGroups()) {
-            if (group.isDisabled()) continue;
-
-            WorldPos blockPosition = group.getBlockPosition();
-            World world = blockPosition.getWorld();
-            Location location = blockPosition.toLocation();
-
-            if (!blockPosition.isChunkLoaded() || world == null || location == null) {
-                this.discard(group); // Remove all viewers and send entity destroy packet.
-                continue;
-            }
-
-            List<Player> players = new ArrayList<>(world.getPlayers());
-            players.removeIf(player -> {
-                if (CrateUtils.isInEffectRange(player, location)) return false;
-
-                this.removeForViewer(player, group);
-                return true;
-            });
-
-            if (players.isEmpty()) {
-                this.discard(group); // Remove all viewers and send entity destroy packet.
-                continue;
-            }
-
-            players.forEach(player -> {
-                boolean needSpawn = !group.isViewer(player);
-
-                List<String> hologramText = Replacer.create().replacePlaceholderAPI(player).apply(text);
-                List<FakeEntity> holograms = group.getEntities();
-                for (int index = 0; index < hologramText.size(); index++) {
-                    if (index >= holograms.size()) break;
-
-                    String line = hologramText.get(index);
-                    FakeEntity entity = holograms.get(index);
-                    this.handler.sendHologramPackets(player, entity, needSpawn, line);
-                }
-
-                group.addViewer(player);
-            });
-        }
+        this.processHologramAsync(crate);
     }
 
     private void createIfAbsent(@NotNull Crate crate) {

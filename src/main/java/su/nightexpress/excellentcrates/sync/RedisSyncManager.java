@@ -73,9 +73,20 @@ public class RedisSyncManager {
             DefaultJedisClientConfig clientConfig = DefaultJedisClientConfig.builder()
                 .password((password == null || password.isEmpty()) ? null : password)
                 .ssl(ssl)
+                .connectionTimeoutMillis(5000)
+                .socketTimeoutMillis(5000)
                 .build();
 
-            this.pool = new JedisPool(new GenericObjectPoolConfig<>(), new HostAndPort(host, port), clientConfig);
+            GenericObjectPoolConfig<Jedis> poolConfig = new GenericObjectPoolConfig<>();
+            poolConfig.setMaxTotal(20);
+            poolConfig.setMaxIdle(10);
+            poolConfig.setMinIdle(2);
+            poolConfig.setTestOnBorrow(true);
+            poolConfig.setTestOnReturn(true);
+            poolConfig.setTestWhileIdle(true);
+            poolConfig.setTimeBetweenEvictionRunsMillis(30000);
+
+            this.pool = new JedisPool(poolConfig, new HostAndPort(host, port), clientConfig);
             this.active = true;
             this.startSubscriber();
 
@@ -313,12 +324,14 @@ public class RedisSyncManager {
         root.addProperty("nodeId", this.nodeId);
         root.add("data", data);
 
-        try (Jedis jedis = this.pool.getResource()) {
-            jedis.publish(this.channel, this.gson.toJson(root));
-        }
-        catch (Exception e) {
-            this.plugin.warn("Redis publish failed: " + e.getMessage());
-        }
+        this.plugin.getFoliaScheduler().runAsync(() -> {
+            try (Jedis jedis = this.pool.getResource()) {
+                jedis.publish(this.channel, this.gson.toJson(root));
+            }
+            catch (Exception e) {
+                this.plugin.warn("Redis publish failed: " + e.getMessage());
+            }
+        });
     }
 
     /* =========================
@@ -334,14 +347,22 @@ public class RedisSyncManager {
         };
 
         this.subscriberThread = new Thread(() -> {
-            try (Jedis jedis = this.pool.getResource()) {
-                jedis.subscribe(this.subscriber, this.channel);
-            }
-            catch (Exception e) {
-                this.plugin.error("Redis subscriber error: " + e.getMessage());
-            }
-            finally {
-                this.active = false;
+            while (this.active) {
+                try (Jedis jedis = this.pool.getResource()) {
+                    jedis.subscribe(this.subscriber, this.channel);
+                }
+                catch (Exception e) {
+                    this.plugin.error("Redis subscriber error: " + e.getMessage());
+                    if (this.active) {
+                        this.plugin.info("Attempting to reconnect Redis subscriber in 5 seconds...");
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException ie) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        }
+                    }
+                }
             }
         }, "ExcellentCrates-RedisSubscriber");
 

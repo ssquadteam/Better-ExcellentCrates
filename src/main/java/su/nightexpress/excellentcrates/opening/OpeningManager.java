@@ -194,7 +194,8 @@ public class OpeningManager extends AbstractManager<CratesPlugin> {
     }
 
     public void tickOpenings() {
-        this.getOpenings().forEach(Opening::tick);
+        List<Opening> openingsCopy = new ArrayList<>(this.getOpenings());
+        openingsCopy.forEach(Opening::tick);
     }
 
     public boolean isOpening(@NotNull Player player) {

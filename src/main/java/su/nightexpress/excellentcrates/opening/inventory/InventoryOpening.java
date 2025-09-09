@@ -127,9 +127,11 @@ public class InventoryOpening extends AbstractOpening implements AsyncProcessabl
     }
 
     private void processSpinnersAsync(AsyncOpeningUpdate update) {
-        for (Spinner spinner : this.getSpinners()) {
-            AsyncSpinnerProcessable asyncSpinner = (AsyncSpinnerProcessable) spinner;
-            asyncSpinner.processAsync(update);
+        List<Spinner> spinnersCopy = new ArrayList<>(this.getSpinners());
+        for (Spinner spinner : spinnersCopy) {
+            if (spinner instanceof AsyncSpinnerProcessable asyncSpinner) {
+                asyncSpinner.processAsync(update);
+            }
         }
     }
 

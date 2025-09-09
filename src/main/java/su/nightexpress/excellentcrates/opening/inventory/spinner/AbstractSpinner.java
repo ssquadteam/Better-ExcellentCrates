@@ -5,6 +5,7 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import su.nightexpress.excellentcrates.api.opening.Spinner;
 import su.nightexpress.excellentcrates.opening.inventory.InventoryOpening;
+import su.nightexpress.excellentcrates.opening.AsyncOpeningUpdate;
 import su.nightexpress.nightcore.bridge.wrap.NightSound;
 import su.nightexpress.nightcore.util.random.Rnd;
 
@@ -12,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.IntStream;
 
-public abstract class AbstractSpinner implements Spinner {
+public abstract class AbstractSpinner implements Spinner, AsyncSpinnerProcessable {
 
     protected final SpinnerData      data;
     protected final InventoryOpening opening;
@@ -81,7 +82,7 @@ public abstract class AbstractSpinner implements Spinner {
     }
 
     @Override
-    public void tick() {
+    public void processAsync(@NotNull AsyncOpeningUpdate update) {
         if (!this.running) return;
 
         if (this.isCompleted()) {
@@ -90,23 +91,35 @@ public abstract class AbstractSpinner implements Spinner {
         }
 
         if (this.isSpinTime()) {
-            this.onSpin();
+            this.onSpinAsync(update);
         }
 
         this.tickCount = Math.max(0L, this.tickCount + 1L);
     }
 
     @Override
+    public void tick() {
+        AsyncOpeningUpdate update = new AsyncOpeningUpdate(this.opening.getPlayer(), this.inventory);
+        this.processAsync(update);
+        if (update.hasUpdates()) {
+            update.applyToMainThread();
+        }
+    }
+
+    @Override
     public void tickAll() {
         if (!this.running) return;
 
+        AsyncOpeningUpdate update = new AsyncOpeningUpdate(this.opening.getPlayer(), this.inventory);
         long total = Math.max(0L, this.getTotalSpins());
 
         for (int count = 0; count < total; count++) {
             if (this.isCompleted()) break;
 
-            this.onSpin();
+            this.onSpinAsync(update);
         }
+
+        update.applyToMainThread();
     }
 
     @Override
@@ -121,17 +134,19 @@ public abstract class AbstractSpinner implements Spinner {
 
     protected abstract void onStop();
 
-    protected void onSpin() {
+    protected void onSpinAsync(@NotNull AsyncOpeningUpdate update) {
         if (!this.isSilent()) {
             NightSound sound = this.data.getSound();
-            if (sound != null) sound.play(this.opening.getPlayer());
+            if (sound != null) {
+                update.addSound("spinner_" + this.getId() + "_" + this.spinCount, sound);
+            }
         }
 
         switch (this.data.getMode()) {
-            case SEQUENTAL -> this.spinSequental();
-            case INDEPENDENT -> this.spinIndependent();
-            case SYNCRHONIZED -> this.spinSynchronized();
-            case RANDOM -> this.spinRandom();
+            case SEQUENTAL -> this.spinSequentalAsync(update);
+            case INDEPENDENT -> this.spinIndependentAsync(update);
+            case SYNCRHONIZED -> this.spinSynchronizedAsync(update);
+            case RANDOM -> this.spinRandomAsync(update);
         }
 
         this.stepCount++;
@@ -149,44 +164,49 @@ public abstract class AbstractSpinner implements Spinner {
         return slot < 0 || slot >= this.inventory.getSize();
     }
 
-    protected void spinSequental() {
+    protected void spinSequentalAsync(@NotNull AsyncOpeningUpdate update) {
         ItemStack item = this.createItem(-1);
+        if (item == null) return;
 
         for (int index = this.slots.length - 1; index > -1; index--) {
             int slot = slots[index];
             if (this.isOutOfBounds(slot)) continue;
 
             if (index == 0) {
-                this.inventory.setItem(slot, item);
-            }
-            else {
+                update.addInventoryUpdate(slot, item);
+            } else {
                 int previousSlot = slots[index - 1];
-                this.inventory.setItem(slot, this.inventory.getItem(previousSlot));
+                ItemStack previousItem = this.inventory.getItem(previousSlot);
+                if (previousItem != null) {
+                    update.addInventoryUpdate(slot, previousItem);
+                }
             }
         }
     }
 
-    protected void spinIndependent() {
+    protected void spinIndependentAsync(@NotNull AsyncOpeningUpdate update) {
         for (int slot : this.slots) {
             if (this.isOutOfBounds(slot)) continue;
 
             ItemStack item = this.createItem(slot);
-
-            this.inventory.setItem(slot, item);
+            if (item != null) {
+                update.addInventoryUpdate(slot, item);
+            }
         }
     }
 
-    protected void spinSynchronized() {
+    protected void spinSynchronizedAsync(@NotNull AsyncOpeningUpdate update) {
         ItemStack item = this.createItem(-1);
+        if (item == null) return;
 
         for (int slot : this.slots) {
             if (this.isOutOfBounds(slot)) continue;
 
-            this.inventory.setItem(slot, item);
+            update.addInventoryUpdate(slot, item);
         }
     }
 
-    protected void spinRandom() {
+    protected void spinRandomAsync(@NotNull AsyncOpeningUpdate update) {
         List<Integer> slots = new ArrayList<>(IntStream.of(this.slots).boxed().toList());
         int roll = Rnd.get(slots.size() + 1);
         if (roll <= 0) return;
@@ -196,7 +216,9 @@ public abstract class AbstractSpinner implements Spinner {
 
             if (!this.isOutOfBounds(slot)) {
                 ItemStack item = this.createItem(slot);
-                this.inventory.setItem(slot, item);
+                if (item != null) {
+                    update.addInventoryUpdate(slot, item);
+                }
             }
 
             roll--;

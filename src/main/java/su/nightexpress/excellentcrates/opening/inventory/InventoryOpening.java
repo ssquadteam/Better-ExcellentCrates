@@ -14,12 +14,15 @@ import su.nightexpress.excellentcrates.key.CrateKey;
 import su.nightexpress.excellentcrates.opening.AbstractOpening;
 import su.nightexpress.excellentcrates.opening.inventory.spinner.SpinnerHolder;
 import su.nightexpress.excellentcrates.opening.inventory.spinner.SpinnerType;
+import su.nightexpress.excellentcrates.opening.inventory.spinner.AsyncSpinnerProcessable;
+import su.nightexpress.excellentcrates.opening.AsyncProcessable;
+import su.nightexpress.excellentcrates.opening.AsyncOpeningUpdate;
 import su.nightexpress.nightcore.util.NumberUtil;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class InventoryOpening extends AbstractOpening {
+public class InventoryOpening extends AbstractOpening implements AsyncProcessable {
 
     protected final InventoryProvider config;
     protected final InventoryView     view;
@@ -73,7 +76,7 @@ public class InventoryOpening extends AbstractOpening {
             }
         });
 
-        //this.player.openInventory(this.view);
+        this.player.openInventory(this.view);
 
         this.launched = true;
         this.launchTicks = 0L;
@@ -82,20 +85,52 @@ public class InventoryOpening extends AbstractOpening {
     }
 
     @Override
-    protected void onTick() {
+    public AsyncOpeningUpdate processAsync() {
+        if (!this.running) return null;
+
+        if (this.isCompleted()) {
+            AsyncOpeningUpdate update = new AsyncOpeningUpdate(this.player, this.view.getTopInventory());
+            update.setStopOpening(true);
+            return update;
+        }
+
+        if (!this.isTickTime()) {
+            this.tickCount = Math.max(0L, this.tickCount + 1L);
+            return null;
+        }
+
+        AsyncOpeningUpdate update = new AsyncOpeningUpdate(this.player, this.view.getTopInventory());
+
         if (this.isSpinnersCompleted()) {
             if (this.closeTicks > 0) {
                 this.closeTicks--;
             }
-        }
-        else {
+        } else {
             if (this.player.getOpenInventory() != this.view) {
-                this.player.openInventory(this.view);
+                update.setOpenInventory(this.view.getTopInventory());
             }
         }
 
-        this.getSpinners().forEach(Spinner::tick);
+        this.processSpinnersAsync(update);
         this.launchTicks++;
+        this.tickCount = Math.max(0L, this.tickCount + 1L);
+
+        return update.hasUpdates() ? update : null;
+    }
+
+    @Override
+    protected void onTick() {
+        AsyncOpeningUpdate update = this.processAsync();
+        if (update != null && update.hasUpdates()) {
+            update.applyToMainThread();
+        }
+    }
+
+    private void processSpinnersAsync(AsyncOpeningUpdate update) {
+        for (Spinner spinner : this.getSpinners()) {
+            AsyncSpinnerProcessable asyncSpinner = (AsyncSpinnerProcessable) spinner;
+            asyncSpinner.processAsync(update);
+        }
     }
 
     @Override

@@ -13,6 +13,7 @@ import su.nightexpress.excellentcrates.opening.inventory.InventoryOpening;
 import su.nightexpress.excellentcrates.opening.inventory.spinner.AbstractSpinner;
 import su.nightexpress.excellentcrates.opening.inventory.spinner.SpinMode;
 import su.nightexpress.excellentcrates.opening.inventory.spinner.SpinnerData;
+import su.nightexpress.excellentcrates.opening.AsyncOpeningUpdate;
 import su.nightexpress.nightcore.util.Lists;
 import su.nightexpress.nightcore.util.random.Rnd;
 
@@ -100,8 +101,8 @@ public class RewardSpinner extends AbstractSpinner {
     }
 
     @Override
-    protected void spinRandom() {
-        this.spinIndependent(); // Random mode makes no sense for reward spinners. Also it's not possible to predict reward for it.
+    protected void spinRandomAsync(@NotNull AsyncOpeningUpdate update) {
+        this.spinIndependentAsync(update);
     }
 
     @Override

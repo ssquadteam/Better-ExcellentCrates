@@ -42,6 +42,7 @@ public class OpeningManager extends AbstractManager<CratesPlugin> {
 
         this.addListener(new OpeningListener(this.plugin, this));
 
+        this.startAsyncOpeningTicker();
         this.plugin.getFoliaScheduler().runTimer(this::tickOpenings, 0L, 1L);
     }
 
@@ -149,6 +150,47 @@ public class OpeningManager extends AbstractManager<CratesPlugin> {
     @Nullable
     public Opening getOpening(@NotNull Player player) {
         return this.openingByPlayerMap.get(player.getUniqueId());
+    }
+
+    private void startAsyncOpeningTicker() {
+        this.plugin.getFoliaScheduler().runTimerAsync(() -> {
+            if (this.openingByPlayerMap.isEmpty()) return;
+            this.processOpeningsAsync();
+        }, 0L, 1L);
+    }
+
+    private void processOpeningsAsync() {
+        Set<Opening> openings = new HashSet<>(this.openingByPlayerMap.values());
+
+        for (Opening opening : openings) {
+            if (!opening.isRunning()) continue;
+
+            try {
+                this.processOpeningAsync(opening);
+            } catch (Exception e) {
+                this.plugin.error("Error processing opening for player " + opening.getPlayer().getName() + ": " + e.getMessage());
+                e.printStackTrace();
+                this.plugin.getFoliaScheduler().runAtEntity(opening.getPlayer(), () -> {
+                    this.stopOpening(opening.getPlayer());
+                });
+            }
+        }
+    }
+
+    private void processOpeningAsync(Opening opening) {
+        AsyncProcessable asyncOpening = (AsyncProcessable) opening;
+        AsyncOpeningUpdate update = asyncOpening.processAsync();
+
+        if (update != null && update.hasUpdates()) {
+            this.plugin.getFoliaScheduler().runAtEntity(opening.getPlayer(), () -> {
+                try {
+                    update.applyToMainThread();
+                } catch (Exception e) {
+                    this.plugin.error("Error applying opening update for player " + opening.getPlayer().getName() + ": " + e.getMessage());
+                    e.printStackTrace();
+                }
+            });
+        }
     }
 
     public void tickOpenings() {

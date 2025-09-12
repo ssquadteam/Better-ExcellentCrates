@@ -62,7 +62,8 @@ public abstract class AbstractSpinner implements Spinner, AsyncSpinnerProcessabl
     }
 
     private boolean isStepDone() {
-        return this.stepCount >= this.currentStep.getSpinsAmount();
+        SpinStep step = this.currentStep;
+        return step == null || this.stepCount >= step.getSpinsAmount();
     }
 
     @Override
@@ -135,6 +136,9 @@ public abstract class AbstractSpinner implements Spinner, AsyncSpinnerProcessabl
     protected abstract void onStop();
 
     protected void onSpinAsync(@NotNull AsyncOpeningUpdate update) {
+        if (this.isCompleted()) {
+            return;
+        }
         if (!this.isSilent()) {
             NightSound sound = this.data.getSound();
             if (sound != null) {

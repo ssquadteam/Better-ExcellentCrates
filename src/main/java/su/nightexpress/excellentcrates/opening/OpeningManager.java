@@ -168,7 +168,7 @@ public class OpeningManager extends AbstractManager<CratesPlugin> {
             if (!(opening instanceof AsyncProcessable asyncOpening)) continue;
 
             try {
-                this.processOpeningAsync(asyncOpening);
+                this.processOpeningAsync(opening, asyncOpening);
             } catch (Exception e) {
                 this.plugin.error("Error processing opening for player " + opening.getPlayer().getName() + ": " + e.getMessage());
                 e.printStackTrace();
@@ -179,15 +179,15 @@ public class OpeningManager extends AbstractManager<CratesPlugin> {
         }
     }
 
-    private void processOpeningAsync(AsyncProcessable asyncOpening) {
+    private void processOpeningAsync(Opening opening, AsyncProcessable asyncOpening) {
         AsyncOpeningUpdate update = asyncOpening.processAsync();
 
         if (update != null && update.hasUpdates()) {
-            this.plugin.getFoliaScheduler().runAtEntity(update.getPlayer(), () -> {
+            this.plugin.getFoliaScheduler().runAtEntity(opening.getPlayer(), () -> {
                 try {
                     update.applyToMainThread();
                 } catch (Exception e) {
-                    this.plugin.error("Error applying opening update for player " + update.getPlayer().getName() + ": " + e.getMessage());
+                    this.plugin.error("Error applying opening update for player " + opening.getPlayer().getName() + ": " + e.getMessage());
                     e.printStackTrace();
                 }
             });

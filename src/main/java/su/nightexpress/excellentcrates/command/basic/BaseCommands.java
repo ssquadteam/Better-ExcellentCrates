@@ -322,7 +322,9 @@ public class BaseCommands {
         if (amount == 0) return false;
 
         boolean silent = arguments.hasFlag(CommandFlags.SILENT);
-        World targetWorld = arguments.getWorldArgument(CommandArguments.WORLD);
+        World targetWorld = arguments.hasArgument(CommandArguments.WORLD)
+            ? arguments.getWorldArgument(CommandArguments.WORLD)
+            : null;
 
         Players.getOnline().forEach(player -> {
             if (!player.hasPermission(Perms.INCLUDE_KEY_GIVEALL)) return;

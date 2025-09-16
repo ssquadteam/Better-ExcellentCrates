@@ -82,10 +82,8 @@ public class CommandReward extends AbstractReward {
             processedCommands.add(command);
         });
 
-        this.plugin.runAtEntity(player, () -> {
-            processedCommands.forEach(command -> {
-                Players.dispatchCommand(player, command);
-            });
+        this.plugin.runNextTick(() -> {
+            processedCommands.forEach(command -> Players.dispatchCommand(player, command));
         });
     }
 

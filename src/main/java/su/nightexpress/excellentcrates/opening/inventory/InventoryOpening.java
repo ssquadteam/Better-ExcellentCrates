@@ -25,8 +25,8 @@ import java.util.List;
 public class InventoryOpening extends AbstractOpening implements AsyncProcessable {
 
     protected final InventoryProvider config;
-    protected final InventoryView     view;
-    protected final List<Spinner>    spinners;
+    protected InventoryView           view; // not final: Paper may return a different view on open
+    protected final List<Spinner>     spinners;
 
     private boolean launched;
     private long    closeTicks;
@@ -70,13 +70,23 @@ public class InventoryOpening extends AbstractOpening implements AsyncProcessabl
 
     @Override
     protected void onStart() {
+        // Pre-fill default items into the prepared view
         this.config.getDefaultItems().values().forEach(menuItem -> {
             for (int slot : menuItem.getSlots()) {
                 this.view.getTopInventory().setItem(slot, menuItem.getItem().getItemStack());
             }
         });
 
+        // Open the prepared view
         this.player.openInventory(this.view);
+        // Re-apply defaults next tick for Paper compatibility where contents may be reset on open
+        this.plugin.getFoliaScheduler().runNextTick(() -> {
+            this.config.getDefaultItems().values().forEach(menuItem -> {
+                for (int slot : menuItem.getSlots()) {
+                    this.view.getTopInventory().setItem(slot, menuItem.getItem().getItemStack());
+                }
+            });
+        });
 
         this.launched = true;
         this.launchTicks = 0L;

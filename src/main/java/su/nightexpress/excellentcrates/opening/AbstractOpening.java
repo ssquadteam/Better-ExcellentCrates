@@ -102,29 +102,36 @@ public abstract class AbstractOpening implements Opening {
         if (this.isCompleted()) {
             this.onComplete();
 
-            CrateUser user = plugin.getUserManager().getOrFetch(player);
-            UserCrateData userData = user.getCrateData(this.crate);
-            GlobalCrateData globalData = plugin.getDataManager().getCrateDataOrCreate(this.crate);
+            // Fetch user data off-thread to avoid blocking the main thread on DB I/O
+            plugin.getUserManager().getOrFetchAsync(player.getUniqueId()).thenAccept(user -> {
+                if (user == null) return;
 
-            userData.addOpenings(1);
-            globalData.setLatestOpener(this.player);
-            globalData.setSaveRequired(true);
-            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishCrateData(globalData));
+                // Switch back to the main thread to modify Bukkit-related state safely
+                plugin.getFoliaScheduler().runNextTick(() -> {
+                    UserCrateData userData = user.getCrateData(this.crate);
+                    GlobalCrateData globalData = plugin.getDataManager().getCrateDataOrCreate(this.crate);
 
-            if (crate.hasOpenCooldown() && !crate.hasCooldownBypassPermission(player)) {
-                userData.setCooldown(crate.getOpenCooldown());
-            }
+                    userData.addOpenings(1);
+                    globalData.setLatestOpener(this.player);
+                    globalData.setSaveRequired(true);
+                    this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishCrateData(globalData));
 
-            if (crate.hasMilestones()) {
-                userData.addMilestones(1);
-                plugin.getCrateManager().triggerMilestones(player, crate, userData.getMilestone());
-                if (userData.getMilestone() >= crate.getMaxMilestone() && crate.isMilestonesRepeatable()) {
-                    userData.setMilestone(0);
-                }
-            }
+                    if (crate.hasOpenCooldown() && !crate.hasCooldownBypassPermission(player)) {
+                        userData.setCooldown(crate.getOpenCooldown());
+                    }
 
-            this.plugin.getUserManager().save(user);
-            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
+                    if (crate.hasMilestones()) {
+                        userData.addMilestones(1);
+                        plugin.getCrateManager().triggerMilestones(player, crate, userData.getMilestone());
+                        if (userData.getMilestone() >= crate.getMaxMilestone() && crate.isMilestonesRepeatable()) {
+                            userData.setMilestone(0);
+                        }
+                    }
+
+                    this.plugin.getUserManager().save(user);
+                    this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
+                });
+            });
         }
 
         this.plugin.getOpeningManager().removeOpening(this.getPlayer());

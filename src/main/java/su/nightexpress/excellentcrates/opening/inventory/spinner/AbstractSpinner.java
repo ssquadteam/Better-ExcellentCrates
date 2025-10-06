@@ -50,15 +50,24 @@ public abstract class AbstractSpinner implements Spinner, AsyncSpinnerProcessabl
     }
 
     private void nextStep() {
-        if (this.steps.isEmpty()) {
-            this.currentStep = null;
+        while (!this.steps.isEmpty()) {
+            SpinStep candidate = this.steps.removeFirst();
+            if (candidate == null) continue; // corrupted config entry; skip
+
+            int interval = Math.max(1, candidate.getTickInterval()); // avoid modulo by zero
+            int amount = Math.max(0, candidate.getSpinsAmount());
+            if (amount <= 0) {
+                continue;
+            }
+
+            this.currentStep = candidate;
+            this.tickInterval = interval;
+            this.stepCount = 0L;
+            this.tickCount = 0L;
             return;
         }
 
-        this.currentStep = this.steps.removeFirst();
-        this.tickInterval = this.currentStep.getTickInterval();
-        this.stepCount = 0L;
-        this.tickCount = 0L;
+        this.currentStep = null;
     }
 
     private boolean isStepDone() {
@@ -130,7 +139,8 @@ public abstract class AbstractSpinner implements Spinner, AsyncSpinnerProcessabl
             return false;
         }
 
-        return this.tickCount == 0 || this.tickCount % this.tickInterval == 0L;
+        long interval = this.tickInterval <= 0 ? 1 : this.tickInterval; // safety guard
+        return this.tickCount == 0 || this.tickCount % interval == 0L;
     }
 
     protected abstract void onStop();

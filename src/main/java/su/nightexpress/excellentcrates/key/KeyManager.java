@@ -244,16 +244,18 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
     }
 
     public void giveKeysOnHold(@NotNull Player player) {
-        CrateUser user = plugin.getUserManager().getOrFetch(player);
-        user.getKeysOnHold().forEach((keyId, amount) -> {
-            CrateKey crateKey = this.getKeyById(keyId);
-            if (crateKey == null) return;
 
-            this.giveKey(player, crateKey, amount);
+        plugin.getUserManager().manageUserSynchronized(player.getUniqueId(), user -> {
+            user.getKeysOnHold().forEach((keyId, amount) -> {
+                CrateKey crateKey = this.getKeyById(keyId);
+                if (crateKey == null) return;
+
+                this.giveKey(player, crateKey, amount);
+            });
+            user.cleanKeysOnHold();
+            this.plugin.getUserManager().save(user);
+            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
         });
-        user.cleanKeysOnHold();
-        this.plugin.getUserManager().save(user);
-        this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
     }
 
     public void setKey(@NotNull CrateUser user, @NotNull CrateKey key, int amount) {

@@ -1,31 +1,37 @@
 package su.nightexpress.excellentcrates;
 
 import org.jetbrains.annotations.NotNull;
+import su.nightexpress.excellentcrates.api.addon.CratesAddon;
 import su.nightexpress.excellentcrates.command.basic.BaseCommands;
 import su.nightexpress.excellentcrates.command.antidupe.AntiDupeCommands;
 import su.nightexpress.excellentcrates.config.*;
 import su.nightexpress.excellentcrates.crate.CrateManager;
-import su.nightexpress.excellentcrates.crate.effect.EffectRegistry;
 import su.nightexpress.excellentcrates.data.DataHandler;
 import su.nightexpress.excellentcrates.data.DataManager;
+import su.nightexpress.excellentcrates.dialog.CrateDialogs;
 import su.nightexpress.excellentcrates.editor.EditorManager;
 import su.nightexpress.excellentcrates.hologram.HologramManager;
-import su.nightexpress.excellentcrates.hooks.HookId;
 import su.nightexpress.excellentcrates.hooks.impl.PlaceholderHook;
 import su.nightexpress.excellentcrates.key.KeyManager;
 import su.nightexpress.excellentcrates.key.UuidAntiDupeManager;
 import su.nightexpress.excellentcrates.opening.OpeningManager;
 import su.nightexpress.excellentcrates.opening.ProviderRegistry;
+import su.nightexpress.excellentcrates.registry.CratesRegistries;
 import su.nightexpress.excellentcrates.user.UserManager;
 import su.nightexpress.nightcore.NightPlugin;
-import su.nightexpress.nightcore.command.experimental.ImprovedCommands;
+import su.nightexpress.nightcore.commands.command.NightCommand;
 import su.nightexpress.nightcore.config.PluginDetails;
 import su.nightexpress.nightcore.util.Plugins;
 import su.nightexpress.excellentcrates.sync.RedisSyncManager;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
-public class CratesPlugin extends NightPlugin implements ImprovedCommands {
+public class CratesPlugin extends NightPlugin {
+
+    private final List<CratesAddon> addons = new ArrayList<>();
 
     private DataHandler dataHandler;
     private DataManager dataManager;
@@ -44,25 +50,28 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
     protected PluginDetails getDefaultDetails() {
         return PluginDetails.create("Crates", new String[]{"crates", "ecrates", "excellentcrates", "crate", "case", "cases"})
             .setConfigClass(Config.class)
-            .setLangClass(Lang.class)
             .setPermissionsClass(Perms.class);
+    }
+
+    @Override
+    protected boolean disableCommandManager() {
+        return true;
+    }
+
+    @Override
+    protected void onStartup() {
+        CratesAPI.load(this);
+        Keys.load(this);
+    }
+
+    @Override
+    protected void addRegistries() {
+        this.registerLang(Lang.class);
     }
 
     @Override
     public void enable() {
         this.loadEngine();
-
-        if (!Plugins.hasEconomyBridge()) {
-            this.warn("*".repeat(25));
-            this.warn("You don't have " + HookId.ECONOMY_BRIDGE + " installed.");
-            this.warn("The following features will be unavailable:");
-            this.warn("- Crate open cost.");
-            this.warn("- Custom item plugin support.");
-            this.warn("*".repeat(25));
-        }
-
-        this.getLangManager().loadEntries(EditorLang.class);
-        this.loadCommands();
 
         this.crateLogger = new CrateLogger(this);
 
@@ -95,6 +104,11 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
 
         this.dataHandler.updateRewardLimits();
 
+        if (Version.withDialogs()) {
+            this.dialogs = new CrateDialogs(this);
+            this.dialogs.setup();
+        }
+
         if (Plugins.hasPlaceholderAPI()) {
             PlaceholderHook.setup(this);
         }
@@ -107,6 +121,7 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
 
     @Override
     public void disable() {
+        if (this.dialogs != null) this.dialogs.shutdown();
         if (this.editorManager != null) this.editorManager.shutdown();
         if (this.openingManager != null) this.openingManager.shutdown();
         if (this.uuidAntiDupeManager != null) this.uuidAntiDupeManager.shutdown();
@@ -122,22 +137,21 @@ public class CratesPlugin extends NightPlugin implements ImprovedCommands {
             PlaceholderHook.shutdown();
         }
 
-        EffectRegistry.clear();
+        CratesRegistries.clear();
+        ProviderRegistry.clear();
+    }
+
+    @Override
+    protected void onShutdown() {
+        super.onShutdown();
         Keys.clear();
         CratesAPI.clear();
     }
 
-    @Override
-    public void onDisable() {
-        super.onDisable();
-        ProviderRegistry.clear(); // Clear only on server's shutdown (remember: PlugMan is a cancer), not on reload.
-    }
-
     private void loadEngine() {
-        CratesAPI.load(this);
-        Keys.load(this);
-        EffectRegistry.load();
         ProviderRegistry.load();
+        CratesRegistries.load(this);
+        this.proceedAddons(CratesAddon::onInit);
     }
 
     private void loadCommands() {

@@ -3,16 +3,10 @@ package su.nightexpress.excellentcrates;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import su.nightexpress.excellentcrates.api.crate.Reward;
-import su.nightexpress.excellentcrates.api.item.ItemProvider;
-import su.nightexpress.excellentcrates.config.Config;
-import su.nightexpress.excellentcrates.config.Lang;
-import su.nightexpress.excellentcrates.crate.impl.Cost;
+import su.nightexpress.excellentcrates.crate.cost.Cost;
 import su.nightexpress.excellentcrates.crate.impl.Crate;
 import su.nightexpress.excellentcrates.crate.impl.Milestone;
 import su.nightexpress.excellentcrates.crate.impl.Rarity;
-import su.nightexpress.excellentcrates.crate.limit.LimitValues;
-import su.nightexpress.excellentcrates.crate.reward.impl.CommandReward;
-import su.nightexpress.excellentcrates.crate.reward.impl.ItemReward;
 import su.nightexpress.excellentcrates.key.CrateKey;
 import su.nightexpress.excellentcrates.util.FoliaBlockUtils;
 import su.nightexpress.excellentcrates.util.inspect.Inspection;
@@ -20,33 +14,30 @@ import su.nightexpress.excellentcrates.util.inspect.Inspectors;
 import su.nightexpress.nightcore.language.LangAssets;
 import su.nightexpress.nightcore.util.*;
 import su.nightexpress.nightcore.util.placeholder.PlaceholderList;
-import su.nightexpress.nightcore.util.text.tag.Tags;
-import su.nightexpress.nightcore.util.time.TimeFormats;
-import su.nightexpress.nightcore.util.wrapper.UniParticle;
-
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 public class Placeholders extends su.nightexpress.nightcore.util.Placeholders {
 
     public static final String WIKI_URL          = "https://nightexpressdev.com/excellentcrates/";
-    public static final String WIKI_PLACEHOLDERS = WIKI_URL + "placeholders";
+    public static final String WIKI_WEIGHTS      = WIKI_URL + "rewards/rarity-weights/";
+    public static final String WIKI_PLACEHOLDERS = WIKI_URL + "placeholders/internal";
 
-    @Deprecated
-    public static final String SKULL_CRATE  = "1ff041976a09dd053e3d1d4e611aac09594d74fc71a0ec4da0110416d317dba8";
-    @Deprecated
-    public static final String SKULL_DELETE = "94f90c7bd60bfd0dfc31808d0484d8c2db9959f68df91fbf29423a3da62429a6";
-
-    public static final String GENERIC_NAME    = "%name%";
-    public static final String GENERIC_AMOUNT  = "%amount%";
-    public static final String GENERIC_ID      = "%id%";
-    public static final String GENERIC_CURRENT = "%current%";
-    public static final String GENERIC_MAX     = "%max%";
-    public static final String GENERIC_TIME    = "%time%";
-    public static final String GENERIC_KEYS    = "%keys%";
-    public static final String GENERIC_MODE    = "%mode%";
-    public static final String GENERIC_TYPE    = "%type%";
-    public static final String GENERIC_REWARDS = "%rewards%";
+    public static final String GENERIC_NAME       = "%name%";
+    public static final String GENERIC_AMOUNT     = "%amount%";
+    public static final String GENERIC_ID         = "%id%";
+    public static final String GENERIC_CURRENT    = "%current%";
+    public static final String GENERIC_MAX        = "%max%";
+    public static final String GENERIC_TIME       = "%time%";
+    public static final String GENERIC_KEYS       = "%keys%";
+    public static final String GENERIC_MODE       = "%mode%";
+    public static final String GENERIC_TYPE       = "%type%";
+    public static final String GENERIC_REWARDS    = "%rewards%";
+    public static final String GENERIC_COSTS      = "%costs%";
+    public static final String GENERIC_AVAILABLE  = "%available%";
+    public static final String GENERIC_STATE      = "%state%";
+    public static final String GENERIC_PROBLEMS   = "%problems%";
+    public static final String GENERIC_INSPECTION = "%inspection%";
+    public static final String GENERIC_COOLDOWN   = "%cooldown%";
+    public static final String GENERIC_LIMITS     = "%limits%";
 
     public static final String RARITY_ID          = "%rarity_id%";
     public static final String RARITY_NAME        = "%rarity_name%";
@@ -55,16 +46,12 @@ public class Placeholders extends su.nightexpress.nightcore.util.Placeholders {
 
     public static final String MILESTONE_OPENINGS       = "%milestone_openings%";
     public static final String MILESTONE_REWARD_ID      = "%milestone_reward_id%";
-    public static final String MILESTONE_INSPECT_REWARD = "%milestone_inspect_reward%";
 
-    public static final String CRATE_ID            = "%crate_id%";
-    public static final String CRATE_NAME          = "%crate_name%";
-    public static final String CRATE_DESCRIPTION   = "%crate_description%";
-    public static final String CRATE_PERMISSION    = "%crate_permission%";
-    public static final String CRATE_OPEN_COOLDOWN = "%crate_open_cooldown%";
-    public static final String CRATE_OPEN_COST     = "%crate_open_cost%";
-    public static final String CRATE_LAST_OPENER   = "%crate_last_opener%";
-    public static final String CRATE_LAST_REWARD   = "%crate_last_reward%";
+    public static final String CRATE_ID          = "%crate_id%";
+    public static final String CRATE_NAME        = "%crate_name%";
+    public static final String CRATE_DESCRIPTION = "%crate_description%";
+    public static final String CRATE_LAST_OPENER = "%crate_last_opener%";
+    public static final String CRATE_LAST_REWARD = "%crate_last_reward%";
 
     public static final String CRATE_ITEM_STACKABLE        = "%crate_item_stackable%";
     public static final String CRATE_ANIMATION_ENABLED     = "%crate_animation_enabled%";
@@ -100,20 +87,17 @@ public class Placeholders extends su.nightexpress.nightcore.util.Placeholders {
     public static final String REWARD_RARITY_NAME        = "%reward_rarity_name%";
     public static final String REWARD_RARITY_WEIGHT      = "%reward_rarity_weight%";
     public static final String REWARD_RARITY_ROLL_CHANCE = "%reward_rarity_roll_chance%";
-    public static final String REWARD_BROADCAST          = "%reward_broadcast%";
-    public static final String REWARD_PLACEHOLDER_APPLY  = "%reward_placeholder_apply%";
 
-    public static final String LIMIT_ENABLED         = "%limit_enabled%";
-    public static final String LIMIT_AMOUNT          = "%limit_amount%";
-    public static final String LIMIT_RESET_TIME      = "%limit_cooldown%";
-    public static final String LIMIT_RESET_TIME_STEP = "%limit_cooldown_step%";
+    public static final String COST_ID   = "%cost_id%";
+    public static final String COST_NAME = "%cost_name%";
 
-    public static final String REWARD_IGNORED_PERMISSIONS  = "%reward_ignored_for_permissions%";
-    public static final String REWARD_REQUIRED_PERMISSIONS = "%reward_required_permissions%";
-    public static final String REWARD_CUSTOM_PREVIEW = "%reward_editor_custom_preview%";
-    public static final String REWARD_COMMANDS_CONTENT     = "%reward_editor_commands%";
-    public static final String REWARD_ITEMS_CONTENT        = "%reward_editor_items%";
-    public static final String REWARD_INSPECT_CONTENT      = "%reward_inspect_content%";
+    public static final PlaceholderList<Crate> CRATE = PlaceholderList.create(list -> list
+        .add(CRATE_ID, Crate::getId)
+        .add(CRATE_NAME, Crate::getName)
+        .add(CRATE_DESCRIPTION, crate -> String.join("\n", crate.getDescription()))
+        .add(CRATE_LAST_OPENER, Crate::getLastOpenerName)
+        .add(CRATE_LAST_REWARD, Crate::getLastRewardName)
+    );
 
     public static final Function<Inspection<?>, String> INSPECTION_TYPE     = type -> "%inspection_" + type.name().toLowerCase() + "%";
     public static final String                          INSPECTION_PROBLEMS = "%inspection_problems%";
@@ -243,16 +227,12 @@ public class Placeholders extends su.nightexpress.nightcore.util.Placeholders {
     public static final PlaceholderList<Milestone> MILESTONE = PlaceholderList.create(list -> list
         .add(MILESTONE_OPENINGS, milestone -> NumberUtil.format(milestone.getOpenings()))
         .add(MILESTONE_REWARD_ID, Milestone::getRewardId)
-        .add(MILESTONE_INSPECT_REWARD, milestone -> {
-            return milestone.getReward() == null ? Lang.badEntry("Invalid reward!") : Lang.goodEntry("Reward is correct.");
-        })
     );
 
     public static final PlaceholderList<Rarity> RARITY = PlaceholderList.create(list -> list
         .add(RARITY_ID, Rarity::getId)
         .add(RARITY_NAME, Rarity::getName)
         .add(RARITY_WEIGHT, rarity -> NumberUtil.format(rarity.getWeight()))
-        .add("%rarity_chance%", rarity -> NumberUtil.format(rarity.getWeight()))
         .add(RARITY_ROLL_CHANCE, rarity -> NumberUtil.format(rarity.getRollChance()))
     );
 
@@ -265,6 +245,8 @@ public class Placeholders extends su.nightexpress.nightcore.util.Placeholders {
             .add(KEY_CREATION_TIME, key -> "-")
             .add(KEY_VALID_CHECK, key -> "-");
 
-        Inspectors.KEY.addPlaceholders(list);
-    });
+    public static final PlaceholderList<Cost> COST = PlaceholderList.create(list -> list
+        .add(COST_ID, Cost::getId)
+        .add(COST_NAME, Cost::getName)
+    );
 }

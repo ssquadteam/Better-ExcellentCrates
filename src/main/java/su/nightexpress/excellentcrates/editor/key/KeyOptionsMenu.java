@@ -2,6 +2,7 @@ package su.nightexpress.excellentcrates.editor.key;
 
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryView;
@@ -9,28 +10,27 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.MenuType;
 import org.jetbrains.annotations.NotNull;
 import su.nightexpress.excellentcrates.CratesPlugin;
-import su.nightexpress.excellentcrates.Placeholders;
-import su.nightexpress.excellentcrates.config.EditorLang;
 import su.nightexpress.excellentcrates.config.Lang;
-import su.nightexpress.excellentcrates.item.ItemTypes;
+import su.nightexpress.excellentcrates.dialog.CrateDialogs;
 import su.nightexpress.excellentcrates.key.CrateKey;
 import su.nightexpress.excellentcrates.util.CrateUtils;
-import su.nightexpress.nightcore.ui.UIUtils;
-import su.nightexpress.nightcore.ui.dialog.Dialog;
+import su.nightexpress.nightcore.core.config.CoreLang;
+import su.nightexpress.nightcore.locale.LangContainer;
+import su.nightexpress.nightcore.locale.LangEntry;
+import su.nightexpress.nightcore.locale.entry.IconLocale;
 import su.nightexpress.nightcore.ui.menu.MenuViewer;
 import su.nightexpress.nightcore.ui.menu.click.ClickResult;
-import su.nightexpress.nightcore.ui.menu.confirmation.Confirmation;
-import su.nightexpress.nightcore.ui.menu.item.ItemOptions;
 import su.nightexpress.nightcore.ui.menu.item.MenuItem;
 import su.nightexpress.nightcore.ui.menu.type.LinkedMenu;
-import su.nightexpress.nightcore.util.ItemUtil;
 import su.nightexpress.nightcore.util.Players;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
+import su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers;
 
-public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> {
+import java.util.stream.IntStream;
 
     public KeyOptionsMenu(@NotNull CratesPlugin plugin) {
-        super(plugin, MenuType.GENERIC_9X5, Lang.EDITOR_TITLE_KEY_LIST.getString());
+        super(plugin, MenuType.GENERIC_9X5, Lang.EDITOR_TITLE_KEY_LIST.text());
+        this.plugin.injectLang(this);
 
         this.addItem(MenuItem.buildReturn(this, 40, (viewer, event) -> {
             this.runNextTick(() -> plugin.getEditorManager().openKeyList(viewer.getPlayer()));
@@ -113,7 +113,62 @@ public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> {
 
     @Override
     protected void onPrepare(@NotNull MenuViewer viewer, @NotNull InventoryView view) {
+        Player player = viewer.getPlayer();
+        CrateKey key = this.getLink(player);
+        Runnable flush = () -> this.flush(player);
 
+        viewer.addItem(NightItem.fromType(Material.NAME_TAG).localized(LOCALE_NAME)
+            .replacement(replacer -> replacer.replace(key.replacePlaceholders()))
+            .toMenuItem().setSlots(11).setHandler((viewer1, event) -> {
+                CrateDialogs.KEY_NAME.ifPresent(dialog -> dialog.show(player, key, flush));
+            }).build()
+        );
+
+        if (!key.isVirtual()) {
+            viewer.addItem(NightItem.fromItemStack(key.getItemStack())
+                .localized(LOCALE_ITEM)
+                .replacement(replacer -> replacer
+                    .replace(GENERIC_INSPECTION, () -> Lang.inspection(Lang.INSPECTIONS_GENERIC_ITEM, key.getItem().isValid()))
+                    .replace(GENERIC_STATE, () -> CoreLang.STATE_ENABLED_DISALBED.get(key.isItemStackable()))
+                )
+                .toMenuItem().setSlots(13).setHandler((viewer1, event) -> {
+                    ItemStack cursor = event.getCursor();
+                    if (cursor == null || cursor.getType().isAir()) {
+                        if (event.isLeftClick()) {
+                            key.setItemStackable(!key.isItemStackable());
+                            key.markDirty();
+                            this.runNextTick(flush);
+                        }
+                        return;
+                    }
+
+                    // Remove crate tags to avoid infinite recursion in ItemProvider.
+                    ItemStack clean = CrateUtils.removeCrateTags(new ItemStack(cursor));
+                    Players.addItem(player, cursor);
+                    event.getView().setCursor(null);
+
+                    CrateDialogs.KEY_ITEM.ifPresent(dialog -> dialog.show(player, key, clean, flush));
+                }).build()
+            );
+        }
+
+        viewer.addItem(NightItem.fromType(Material.ENDER_PEARL).localized(LOCALE_VIRTUAL)
+            .replacement(replacer -> replacer.replace(GENERIC_STATE, () -> CoreLang.STATE_YES_NO.get(key.isVirtual())))
+            .toMenuItem().setSlots(15).setHandler((viewer1, event) -> {
+                key.setVirtual(!key.isVirtual());
+                key.markDirty();
+                this.runNextTick(flush);
+            }).build()
+        );
+
+        viewer.addItem(NightItem.fromType(Material.BARRIER).localized(LOCALE_DELETE)
+            .toMenuItem().setSlots(44).setHandler((viewer1, event) -> {
+                if (event.getClick() != ClickType.DROP) return;
+
+                this.plugin.getKeyManager().delete(key);
+                this.runNextTick(() -> this.plugin.getEditorManager().openKeyList(player));
+            }).build()
+        );
     }
 
     @Override

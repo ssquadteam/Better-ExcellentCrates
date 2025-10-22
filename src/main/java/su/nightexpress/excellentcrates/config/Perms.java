@@ -10,7 +10,6 @@ public class Perms {
     public static final String PREFIX                  = "excellentcrates.";
     public static final String PREFIX_COMMAND          = PREFIX + "command.";
     public static final String PREFIX_BYPASS           = PREFIX + "bypass.";
-    public static final String PREFIX_BYPASS_OPEN_COST = PREFIX_BYPASS + "open.cost.";
     public static final String PREFIX_CRATE            = PREFIX + "crate.";
 
     public static final UniPermission PLUGIN  = new UniPermission(PREFIX + Placeholders.WILDCARD);
@@ -41,9 +40,7 @@ public class Perms {
     public static final UniPermission COMMAND_RESETCOOLDOWN      = new UniPermission(PREFIX_COMMAND + "resetcooldown");
     public static final UniPermission COMMAND_ANTIDUPE           = new UniPermission(PREFIX_COMMAND + "antidupe");
 
-    public static final UniPermission BYPASS_CRATE_OPEN_COST = new UniPermission(PREFIX_BYPASS_OPEN_COST + Placeholders.WILDCARD);
     public static final UniPermission BYPASS_CRATE_COOLDOWN  = new UniPermission(PREFIX_BYPASS + "crate.opencooldown");
-    public static final UniPermission BYPASS_REWARD_LIMIT    = new UniPermission(PREFIX_BYPASS + "reward.limit");
 
     static {
         PLUGIN.addChildren(COMMAND, BYPASS, MASS_OPEN, INCLUDE_KEY_GIVEALL);
@@ -71,9 +68,7 @@ public class Perms {
         );
 
         BYPASS.addChildren(
-            BYPASS_CRATE_COOLDOWN,
-            BYPASS_CRATE_OPEN_COST,
-            BYPASS_REWARD_LIMIT
+            BYPASS_CRATE_COOLDOWN
         );
     }
 }

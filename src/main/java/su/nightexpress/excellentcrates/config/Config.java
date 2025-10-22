@@ -4,15 +4,14 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import su.nightexpress.excellentcrates.hologram.HologramTemplate;
 import su.nightexpress.excellentcrates.hooks.HookId;
-import su.nightexpress.excellentcrates.util.ClickType;
-import su.nightexpress.excellentcrates.util.InteractType;
+import su.nightexpress.excellentcrates.util.CrateUtils;
 import su.nightexpress.nightcore.config.ConfigValue;
 import su.nightexpress.nightcore.util.Enums;
 import su.nightexpress.nightcore.util.Plugins;
+import su.nightexpress.nightcore.util.bukkit.NightItem;
 import su.nightexpress.nightcore.util.time.TimeFormatType;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -24,6 +23,7 @@ public class Config {
     public static final String DIR_PREVIEWS = "/previews/";
     public static final String DIR_KEYS     = "/keys/";
     public static final String DIR_MENUS    = "/menu/";
+    public static final String DIR_UI       = "/ui/";
 
     public static final String DIR_OPENINGS             = "/openings/";
     public static final String DIR_OPENINGS_INVENTORY   = DIR_OPENINGS + "inventory/";
@@ -112,12 +112,27 @@ public class Config {
         "Optional node identifier. If empty, a random UUID is used at runtime."
     );
 
+    public static final ConfigValue<Boolean> FEATURE_MASS_OPENING = ConfigValue.create("Features.MassOpening",
+        true,
+        "Whether Mass Opening feature is enabled."
+    );
+
 
     public static final ConfigValue<Boolean> MILESTONES_ENABLED = ConfigValue.create("Milestones.Enabled",
         true,
         "Controls whether Milestones feature is enabled.");
 
 
+    public static final ConfigValue<Integer> CRATE_SAVE_INTERVAL = ConfigValue.create("Crate.SaveInterval",
+        300,
+        "Sets save interval (in seconds) for crates that were changed using the in-game editor.",
+        "[Default is 300 (5 min)]"
+    );
+
+    public static final ConfigValue<NightItem> CRATE_LINK_TOOL = ConfigValue.create("Crate.LinkTool",
+        CrateUtils.getDefaultLinkTool(),
+        "Sets the Link Tool item layout."
+    );
 
     public static final ConfigValue<Boolean> CRATE_ALLOW_CRATES_IN_AIR_BLOCKS = ConfigValue.create("Crate.Allow_Crates_In_Air_Blocks",
         false,
@@ -155,13 +170,22 @@ public class Config {
         "Available values: [" + Enums.inline(TimeFormatType.class) + "]"
     );
 
-    public static final ConfigValue<Boolean> CRATE_HOLD_KEY_TO_OPEN = ConfigValue.create("Crate.Hold_Key_To_Open",
+    public static final ConfigValue<Boolean> OPENING_CONFIRM_FOR_SINGLE_COST = ConfigValue.create("Crate.Opening.Confirmation.ForSingleCost",
         false,
-        "Controls whether player must hold a key in the main hand in order to open crate.",
-        "[*] Works only for physical (not virtual) keys."
+        "Controls whether the Costs GUI will appear even if there is only cost option available."
     );
 
-    public static final ConfigValue<Integer> CRATE_MASS_OPENING_LIMIT = ConfigValue.create("Crate.Mass_Opening_Limit",
+    public static final ConfigValue<Boolean> MASS_OPENING_ALLOW_FOR_NO_COST = ConfigValue.create("Crate.MassOpening.AllowForNoCost",
+        false,
+        "Controls whether players can do Mass Opening for crates with no cost options defined."
+    );
+
+    public static final ConfigValue<Boolean> MASS_OPENING_SNEAK_TO_USE = ConfigValue.create("Crate.MassOpening.SneakToUse",
+        true,
+        "Controls whether players can do Mass Opening by opening crates while sneaking."
+    );
+
+    public static final ConfigValue<Integer> MASS_OPENING_LIMIT = ConfigValue.create("Crate.Mass_Opening_Limit",
         30,
         "Limits amount of crate openings for the Mass Opening feature to this value.",
         "[*] STABILITY NOTICE:",
@@ -185,26 +209,11 @@ public class Config {
         -1.25D,
         "Vector multiplier for crate block pushback. The higher value - the harder pushback.");
 
-    private static final ConfigValue<Map<ClickType, InteractType>> CRATE_CLICK_ACTIONS = ConfigValue.create("Crate.Click_Actions",
-        (cfg, path, def) -> {
-            Map<ClickType, InteractType> map = new HashMap<>();
-            for (ClickType clickType : ClickType.values()) {
-                InteractType clickAction = cfg.getEnum(path + "." + clickType.name(), InteractType.class);
-                if (clickAction == null) continue;
-
-                map.put(clickType, clickAction);
-            }
-            return map;
-        },
-        (cfg, path, map) -> map.forEach((click, action) -> cfg.set(path + "." + click.name(), action)),
-        () -> Map.of(
-            ClickType.LEFT, InteractType.CRATE_PREVIEW,
-            ClickType.RIGHT, InteractType.CRATE_OPEN,
-            ClickType.SHIFT_RIGHT, InteractType.CRATE_MASS_OPEN
-        ),
-        "Defines the crate behavior on certain clicks.",
-        "Allowed click types: " + Enums.inline(ClickType.class),
-        "Allowed crate actions: " + Enums.inline(InteractType.class));
+    public static final ConfigValue<Boolean> CRATE_REVERSE_CLICK_ACTIONS = ConfigValue.create("Crate.Reverse_Click_Actions",
+        false,
+        "Controls whether click actions, when interacting with crate blocks, should be reversed.",
+        "By default it uses Left Click to preview crates, and Right Click to open them."
+    );
 
     public static final ConfigValue<Boolean> HOLOGRAMS_ENABLED = ConfigValue.create("Holograms.Enabled",
         true,
@@ -219,21 +228,6 @@ public class Config {
         "When disabled, rewards choosen by a blind random.",
         "[Default is false]"
     );
-
-    public static final ConfigValue<Boolean> EDITOR_CRATE_INHERITANCE_ITEM_NAME = ConfigValue.create("Editor.Crate.Inheritance.ItemName",
-        true,
-        "Controls whether crate will inherit display name of the item used to replace current crate's item."
-    );
-
-    public static final ConfigValue<Boolean> EDITOR_CRATE_INHERITANCE_ITEM_LORE = ConfigValue.create("Editor.Crate.Inheritance.ItemLore",
-        true,
-        "Controls whether crate will inherit lore (as description) of the item used to replace current crate's item."
-    );
-
-    @Nullable
-    public static InteractType getCrateClickAction(@NotNull ClickType clickType) {
-        return CRATE_CLICK_ACTIONS.get().get(clickType);
-    }
 
     public static boolean isMilestonesEnabled() {
         return MILESTONES_ENABLED.get();
@@ -261,8 +255,8 @@ public class Config {
         return CRATE_ALLOW_CRATES_IN_AIR_BLOCKS.get();
     }
 
-    public static boolean isKeyHoldRequired() {
-        return CRATE_HOLD_KEY_TO_OPEN.get();
+    public static boolean isMassOpenEnabled() {
+        return FEATURE_MASS_OPENING.get();
     }
 
     public static final ConfigValue<Integer> ANTI_DUPE_CACHE_MAX_VALID = ConfigValue.create("Data.AntiDupe.Cache.MaxValid",

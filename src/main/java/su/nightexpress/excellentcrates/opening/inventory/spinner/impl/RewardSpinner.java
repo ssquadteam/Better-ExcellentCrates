@@ -4,7 +4,6 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import su.nightexpress.excellentcrates.api.crate.Reward;
 import su.nightexpress.excellentcrates.config.Config;
 import su.nightexpress.excellentcrates.crate.impl.Crate;
@@ -17,19 +16,20 @@ import su.nightexpress.excellentcrates.opening.AsyncOpeningUpdate;
 import su.nightexpress.nightcore.util.Lists;
 import su.nightexpress.nightcore.util.random.Rnd;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class RewardSpinner extends AbstractSpinner {
 
     private final Set<Rarity> rarities;
-    private final List<Reward> rewards;
 
     private int rewardIndex;
 
     public RewardSpinner(@NotNull SpinnerData data, @NotNull InventoryOpening opening, @NotNull Set<Rarity> rarities) {
         super(data, opening);
         this.rarities = rarities;
-        this.rewards = new ArrayList<>();
         this.rewardIndex = 0;
 
         this.prepareRewards();
@@ -42,12 +42,12 @@ public class RewardSpinner extends AbstractSpinner {
     private void prepareRewards() {
         for (int winSlot : this.winSlots) {
             if (Lists.contains(this.slots, winSlot)) {
-                this.rewards.add(this.rollReward(false));
+                this.opening.addReward(this.rollReward(false));
             }
         }
     }
 
-    @Nullable
+    @NotNull
     private Reward rollReward(boolean visual) {
         Crate crate = this.opening.getCrate();
         Player player = this.opening.getPlayer();
@@ -59,7 +59,7 @@ public class RewardSpinner extends AbstractSpinner {
                     rarityMap.put(rarity, rarity.getWeight());
                 }
             });
-            if (rarityMap.isEmpty()) return null;
+            if (rarityMap.isEmpty()) throw new IllegalStateException("No rewards available!");
 
             Rarity rarity = Rnd.getByWeight(rarityMap);
             return crate.rollReward(this.opening.getPlayer(), rarity);
@@ -67,22 +67,23 @@ public class RewardSpinner extends AbstractSpinner {
         else {
             List<Reward> rewards = crate.getRewards(player);
             rewards.removeIf(reward -> !this.rarities.contains(reward.getRarity()));
+            if (rewards.isEmpty()) throw new IllegalStateException("No rewards available!");
 
-            return rewards.isEmpty() ? null : Rnd.get(rewards);
+            return Rnd.get(rewards);
         }
     }
 
     @Override
     @NotNull
     public ItemStack createItem(int slot) {
-        Reward reward = this.shouldUsePredictedReward(slot) ? this.rewards.get(this.rewardIndex++) : this.rollReward(true);
+        Reward reward = this.shouldUsePredictedReward(slot) ? this.opening.getRewards().get(this.rewardIndex++) : this.rollReward(true);
         if (reward == null) return new ItemStack(Material.AIR);
 
         return reward.getPreviewItem();
     }
 
     private boolean shouldUsePredictedReward(int slot) {
-        if (this.rewardIndex >= this.rewards.size()) return false;
+        if (this.rewardIndex >= this.opening.getRewards().size()) return false;
 
         int spinsLeft = Math.toIntExact(this.requiredSpins - this.spinCount);
         SpinMode mode = this.data.getMode();
@@ -107,8 +108,6 @@ public class RewardSpinner extends AbstractSpinner {
 
     @Override
     protected void onStop() {
-        Player player = this.opening.getPlayer();
 
-        this.rewards.forEach(reward -> reward.give(player));
     }
 }

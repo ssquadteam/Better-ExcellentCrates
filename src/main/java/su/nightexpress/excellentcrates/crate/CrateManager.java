@@ -83,11 +83,12 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
         this.loadPreviews();
         this.loadCrates();
         this.loadUI();
-        this.plugin.runNextTick(() -> this.runInspections()); // After everything is loaded.
+        this.plugin.runTask(task -> this.reportProblems()); // After everything is loaded.
 
         this.addListener(new CrateListener(this.plugin, this));
 
-        this.plugin.getFoliaScheduler().runTimerAsync(this::playCrateEffects, 0L, 1L);
+        this.addAsyncTask(this::playCrateEffects, 1L);
+        this.addAsyncTask(this::saveCrates, Config.CRATE_SAVE_INTERVAL.get());
     }
 
     @Override
@@ -195,10 +196,9 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
         }
     }
 
-    private void runInspections() {
-        this.getCrates().forEach(crate -> {
-            String filePath = crate.getFile().getPath();
-            crate.validateBlockPositions();
+    private void reportProblems() {
+        this.getCrates().forEach(crate -> crate.collectProblems().print(this.plugin.getLogger()));
+    }
 
     private void saveCrates() {
         this.getCrates().forEach(Crate::saveIfDirty);
@@ -397,27 +397,10 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
     }
 
     public void giveCrateItem(@NotNull Player player, @NotNull Crate crate, int amount) {
-        final int giveAmount = Math.max(1, amount);
+        amount = Math.max(1, amount);
 
-        this.plugin.getFoliaScheduler().runAtEntity(player, () -> {
-            ItemStack crateItem = crate.getItem();
-            Players.addItem(player, crateItem, giveAmount);
-        });
-    }
-
-    public boolean giveCrateItemCrossServer(@NotNull Crate crate, @NotNull UUID playerId, int amount) {
-        Player player = org.bukkit.Bukkit.getPlayer(playerId);
-        if (player != null) {
-            this.giveCrateItem(player, crate, amount);
-            return true;
-        }
-
-        return this.plugin.getRedisSyncManager()
-            .map(sync -> {
-                sync.publishGiveCrateItem(crate.getId(), playerId, amount);
-                return true;
-            })
-            .orElse(false);
+        ItemStack crateItem = crate.getItemStack();
+        Players.addItem(player, crateItem, amount);
     }
 
     public void openCostMenu(@NotNull Player player, @NotNull CrateSource source) {
@@ -630,7 +613,6 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
 
         globalData.setLatestReward(reward);
         globalData.setSaveRequired(true);
-        this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishCrateData(globalData));
 
         if (reward.isBroadcast()) {
             Lang.CRATE_OPEN_REWARD_BROADCAST.message().broadcast(replacer -> replacer
@@ -654,20 +636,16 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
         RewardData globalData = this.plugin.getDataManager().getRewardLimitOrCreate(reward, null);
         RewardData playerData = this.plugin.getDataManager().getRewardLimitOrCreate(reward, player);
 
-            limit.addRoll(1);
-            limit.updateResetTime(reward.getGlobalLimits());
-            limit.setSaveRequired(true);
-            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimit(limit));
+        if (limits.hasGlobalCooldown()) {
+            globalData.setCooldownUntil(limits.generateGlobalCooldown());
+            globalData.addRoll(1);
+            globalData.setSaveRequired(true);
         }
 
-        if (reward.hasPersonalLimit()) {
-            RewardLimit limit = this.plugin.getDataManager().getRewardLimitOrCreate(reward, player);
-            limit.resetIfReady();
-
-            limit.addRoll(1);
-            limit.updateResetTime(reward.getPlayerLimits());
-            limit.setSaveRequired(true);
-            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimit(limit));
+        if (limits.hasPlayerCooldown()) {
+            playerData.setCooldownUntil(limits.generatePlayerCooldown());
+            playerData.addRoll(1);
+            playerData.setSaveRequired(true);
         }
     }
 
@@ -707,18 +685,12 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
                 Location location = worldPos.toLocation();
                 if (location == null) return;
 
-                // Use location-specific scheduling for Folia compatibility
-                this.plugin.runAtLocation(location, () -> {
-                    CrateUtils.getPlayersForEffects(location).forEach(player -> {
-                        effect.playStep(location, particle, player);
-                    });
+                CrateUtils.getPlayersForEffects(location).forEach(player -> {
+                    effect.playStep(location, particle, player);
                 });
             });
         });
 
-        // This can run on global scheduler
-        this.plugin.runNextTick(() -> {
-            EffectRegistry.getEffects().forEach(CrateEffect::addTickCount);
-        });
+        CratesRegistries.getEffects().forEach(CrateEffect::addTickCount);
     }
 }

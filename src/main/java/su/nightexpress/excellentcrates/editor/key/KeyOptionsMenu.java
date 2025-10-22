@@ -28,6 +28,39 @@ import su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers;
 
 import java.util.stream.IntStream;
 
+import static su.nightexpress.excellentcrates.Placeholders.*;
+import static su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers.RED;
+import static su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers.SOFT_YELLOW;
+
+public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> implements LangContainer {
+
+    private static final IconLocale LOCALE_DELETE = LangEntry.iconBuilder("Editor.Button.Key.Delete")
+        .accentColor(RED)
+        .name("Delete Key")
+        .appendInfo("Permanently deletes the key.").br()
+        .appendClick("Press [" + TagWrappers.KEY.apply("key.drop") + "] to delete")
+        .build();
+
+    private static final IconLocale LOCALE_NAME = LangEntry.iconBuilder("Editor.Button.Key.Name")
+        .name("Display Name")
+        .appendCurrent("Current", KEY_NAME).br()
+        .appendClick("Click to change")
+        .build();
+
+    private static final IconLocale LOCALE_ITEM = LangEntry.iconBuilder("Editor.Button.Key.Item").name("Key Item")
+        .appendCurrent("Status", GENERIC_INSPECTION)
+        .appendCurrent("Stackable", GENERIC_STATE).br()
+        .appendInfo("Drop an item on " + SOFT_YELLOW.wrap("this") + " button", "to replace the key's item.").br()
+        .appendClick("Click to toggle stacking")
+        .build();
+
+    private static final IconLocale LOCALE_VIRTUAL = LangEntry.iconBuilder("Editor.Button.Key.Virtual")
+        .name("Virtual")
+        .appendCurrent("State", GENERIC_STATE).br()
+        .appendInfo("Controls whether the key is virtual.").br()
+        .appendClick("Click to toggle")
+        .build();
+
     public KeyOptionsMenu(@NotNull CratesPlugin plugin) {
         super(plugin, MenuType.GENERIC_9X5, Lang.EDITOR_TITLE_KEY_LIST.text());
         this.plugin.injectLang(this);
@@ -36,79 +69,7 @@ import java.util.stream.IntStream;
             this.runNextTick(() -> plugin.getEditorManager().openKeyList(viewer.getPlayer()));
         }));
 
-        this.addItem(ItemUtil.getCustomHead(Placeholders.SKULL_DELETE), EditorLang.KEY_EDIT_DELETE, 8, (viewer, event, key) -> {
-            Player player = viewer.getPlayer();
-
-            UIUtils.openConfirmation(player, Confirmation.builder()
-                .onAccept((viewer1, event1) -> {
-                    plugin.getKeyManager().delete(key);
-                    plugin.runTask(task -> plugin.getEditorManager().openKeyList(player));
-                })
-                .onReturn((viewer1, event1) -> {
-                    plugin.runTask(task -> plugin.getEditorManager().openKeyOptions(player, key));
-                })
-                .build());
-        });
-
-        this.addItem(Material.NAME_TAG, EditorLang.KEY_EDIT_NAME, 20, (viewer, event, key) -> {
-            this.handleInput(Dialog.builder(viewer, Lang.EDITOR_ENTER_DISPLAY_NAME, input -> {
-                key.setName(input.getText());
-                key.save();
-                return true;
-            }));
-        });
-
-        this.addItem(Material.TRIPWIRE_HOOK, EditorLang.KEY_EDIT_ITEM, 22, (viewer, event, key) -> {
-            ItemStack cursor = event.getCursor();
-            if (cursor == null || cursor.getType().isAir()) {
-                if (event.isLeftClick()) {
-                    Players.addItem(viewer.getPlayer(), key.getItem());
-                }
-                else if (event.isRightClick()) {
-                    Players.addItem(viewer.getPlayer(), key.getRawItem());
-                }
-                return;
-            }
-
-            event.getView().setCursor(null);
-
-            // Remove key tags to avoid infinite recursion in ItemProvider.
-            ItemStack clean = CrateUtils.removeCrateTags(new ItemStack(cursor));
-
-            if (!ItemTypes.isCustom(clean)) {
-                key.setProvider(ItemTypes.vanilla(clean));
-                key.setName(ItemUtil.getNameSerialized(clean));
-                this.saveAndFlush(viewer);
-            }
-            else {
-                this.runNextTick(() -> plugin.getEditorManager().openItemTypeMenu(viewer.getPlayer(), clean, provider -> {
-                    key.setProvider(provider);
-                    key.setName(ItemUtil.getNameSerialized(clean));
-                    key.save();
-                    this.runNextTick(() -> this.open(viewer.getPlayer(), key));
-                }));
-            }
-
-            event.getView().setCursor(null);
-
-        }, ItemOptions.builder().setVisibilityPolicy(viewer -> !this.getLink(viewer).isVirtual()).build());
-
-        this.addItem(Material.ENDER_PEARL, EditorLang.KEY_EDIT_VIRTUAL, 24, (viewer, event, key) -> {
-            key.setVirtual(!key.isVirtual());
-            this.saveAndFlush(viewer);
-        });
-    }
-
-    private void saveAndFlush(@NotNull MenuViewer viewer) {
-        this.getLink(viewer).save();
-        this.runNextTick(() -> this.flush(viewer));
-    }
-
-    @Override
-    protected void onItemPrepare(@NotNull MenuViewer viewer, @NotNull MenuItem menuItem, @NotNull NightItem item) {
-        super.onItemPrepare(viewer, menuItem, item);
-
-        item.replacement(replacer -> replacer.replace(this.getLink(viewer).replacePlaceholders()));
+        this.addItem(MenuItem.background(Material.BLACK_STAINED_GLASS_PANE, IntStream.range(36, 45).toArray()));
     }
 
     @Override

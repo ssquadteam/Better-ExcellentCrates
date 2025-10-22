@@ -94,15 +94,17 @@ public class ItemReward extends AbstractReward {
     public void giveContent(@NotNull Player player) {
         Replacer replacer = this.createContentReplacer(player);
 
-        this.getItems().forEach(provider -> {
-            ItemStack itemStack = provider.getItemStack();
-            if (ItemTypes.isDummy(itemStack)) return;
+        this.plugin.getFoliaScheduler().runAtEntity(player, () -> {
+            this.getItems().forEach(provider -> {
+                ItemStack itemStack = provider.getItemStack();
+                if (ItemTypes.isDummy(itemStack)) return;
 
-            if (this.placeholderApply) {
-                replacer.apply(itemStack);
-            }
+                if (this.placeholderApply) {
+                    replacer.apply(itemStack);
+                }
 
-            Players.addItem(player, itemStack);
+                Players.addItem(player, itemStack);
+            });
         });
     }
 

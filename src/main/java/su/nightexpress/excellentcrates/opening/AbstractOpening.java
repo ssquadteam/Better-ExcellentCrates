@@ -93,7 +93,10 @@ public abstract class AbstractOpening implements Opening {
                 this.plugin.getKeyManager().giveKey(this.player, this.key, 1);
             }
             if (this.source.getItem() != null) {
-                Players.addItem(this.player, this.crate.getItem());
+                // Ensure refund item is added on the player's region thread (Folia-safe)
+                this.plugin.getFoliaScheduler().runAtEntity(this.player, () -> {
+                    Players.addItem(this.player, this.crate.getItem());
+                });
             }
 
             this.crate.refundForOpen(this.player);

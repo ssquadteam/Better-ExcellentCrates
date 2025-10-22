@@ -343,10 +343,12 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
     }
 
     public void giveCrateItem(@NotNull Player player, @NotNull Crate crate, int amount) {
-        amount = Math.max(1, amount);
+        final int giveAmount = Math.max(1, amount);
 
-        ItemStack crateItem = crate.getItem();
-        Players.addItem(player, crateItem, amount);
+        this.plugin.getFoliaScheduler().runAtEntity(player, () -> {
+            ItemStack crateItem = crate.getItem();
+            Players.addItem(player, crateItem, giveAmount);
+        });
     }
 
     public boolean giveCrateItemCrossServer(@NotNull Crate crate, @NotNull UUID playerId, int amount) {

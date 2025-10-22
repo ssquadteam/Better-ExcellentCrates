@@ -123,6 +123,26 @@ public class InventoryProvider extends AbstractProvider {
                 this.addSpinner(holder);
             });
         }
+
+        boolean hasRewardSpinner = false;
+        boolean winCovered = false;
+        for (SpinnerHolder holder : this.spinners.values()) {
+            if (holder.getType() != SpinnerType.REWARD) continue;
+            hasRewardSpinner = true;
+            int[] slots = holder.getConfig().getSlots();
+            for (int win : this.winSlots) {
+                for (int slot : slots) {
+                    if (slot == win) {
+                        winCovered = true;
+                        break;
+                    }
+                }
+                if (winCovered) break;
+            }
+        }
+        if (hasRewardSpinner && !winCovered) {
+            this.plugin.warn("Opening '" + this.getId() + "' is misconfigured: none of the REWARD spinners include any WinSlots " + java.util.Arrays.toString(this.winSlots) + ". Visuals may not match the actual reward.");
+        }
     }
 
     @Override

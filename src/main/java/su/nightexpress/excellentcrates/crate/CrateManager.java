@@ -3,6 +3,7 @@ package su.nightexpress.excellentcrates.crate;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
+import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -53,6 +54,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.UUID;
 
 public class CrateManager extends AbstractManager<CratesPlugin> {
 
@@ -405,6 +407,20 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
 
     public void openCostMenu(@NotNull Player player, @NotNull CrateSource source) {
         this.costMenu.open(player, source);
+    }
+
+    public boolean giveCrateItemCrossServer(@NotNull Crate crate, @NotNull UUID playerId, int amount) {
+        Player player = Bukkit.getPlayer(playerId);
+        if (player != null) {
+            this.giveCrateItem(player, crate, amount);
+            return true;
+        }
+        return this.plugin.getRedisSyncManager()
+            .map(sync -> {
+                sync.publishGiveCrateItem(crate.getId(), playerId, amount);
+                return true;
+            })
+            .orElse(false);
     }
 
     public void openAmountMenu(@NotNull Player player, @NotNull CrateSource source, @Nullable Cost cost) {

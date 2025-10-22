@@ -95,14 +95,14 @@ public class CrateMilestonesMenu extends LinkedMenu<CratesPlugin, Crate> impleme
             }
 
             if (event.isLeftClick()) {
-                this.handleInput(Dialog.builder(viewer1, Lang.EDITOR_ENTER_AMOUNT.text(), input -> {
+                this.handleInput(Dialog.builder(viewer1, Lang.EDITOR_ENTER_AMOUNT.getString(), input -> {
                     milestone.setOpenings(input.asInt(0));
                     crate.markDirty();
                     return true;
                 }));
             }
             else if (event.isRightClick()) {
-                this.handleInput(Dialog.builder(viewer1, Lang.EDITOR_ENTER_REWARD_ID.text(), input -> {
+                this.handleInput(Dialog.builder(viewer1, Lang.EDITOR_ENTER_REWARD_ID.getString(), input -> {
                     milestone.setRewardId(input.getTextRaw());
                     crate.markDirty();
                     return true;

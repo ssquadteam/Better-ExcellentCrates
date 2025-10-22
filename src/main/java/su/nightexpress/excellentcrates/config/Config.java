@@ -175,6 +175,11 @@ public class Config {
         "Controls whether the Costs GUI will appear even if there is only cost option available."
     );
 
+    public static final ConfigValue<Boolean> CRATE_HOLD_KEY_TO_OPEN = ConfigValue.create("Crate.Hold_Key_To_Open",
+        false,
+        "When enabled, players must hold a key in hand to open a crate; when disabled, any key from inventory can be used."
+    );
+
     public static final ConfigValue<Boolean> MASS_OPENING_ALLOW_FOR_NO_COST = ConfigValue.create("Crate.MassOpening.AllowForNoCost",
         false,
         "Controls whether players can do Mass Opening for crates with no cost options defined."

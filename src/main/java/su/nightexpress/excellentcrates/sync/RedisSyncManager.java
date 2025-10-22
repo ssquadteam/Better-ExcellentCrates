@@ -20,7 +20,7 @@ import su.nightexpress.excellentcrates.config.Config;
 import su.nightexpress.excellentcrates.config.Lang;
 import su.nightexpress.excellentcrates.data.crate.GlobalCrateData;
 import su.nightexpress.excellentcrates.data.crate.UserCrateData;
-import su.nightexpress.excellentcrates.data.reward.RewardLimit;
+import su.nightexpress.excellentcrates.data.reward.RewardData;
 import su.nightexpress.excellentcrates.data.serialize.UserCrateDataSerializer;
 import su.nightexpress.excellentcrates.user.CrateUser;
 import su.nightexpress.excellentcrates.key.CrateKey;
@@ -157,15 +157,15 @@ public class RedisSyncManager {
         publish("CRATE_DATA_DELETE", d);
     }
 
-    public void publishRewardLimit(@NotNull RewardLimit limit) {
+    public void publishRewardLimit(@NotNull RewardData limit) {
         if (!isActive()) return;
 
         JsonObject d = new JsonObject();
         d.addProperty("crateId", limit.getCrateId());
         d.addProperty("rewardId", limit.getRewardId());
         d.addProperty("holder", limit.getHolder());
-        d.addProperty("amount", limit.getAmount());
-        d.addProperty("resetDate", limit.getResetDate());
+        d.addProperty("amount", limit.getRolls());
+        d.addProperty("resetDate", limit.getCooldownUntil());
 
         publish("REWARD_LIMIT_UPSERT", d);
     }
@@ -456,7 +456,7 @@ public class RedisSyncManager {
         int amount = data.get("amount").getAsInt();
         long resetDate = data.get("resetDate").getAsLong();
 
-        RewardLimit limit = new RewardLimit(crateId, rewardId, holder, amount, resetDate);
+        RewardData limit = new RewardData(crateId, rewardId, holder, amount, resetDate);
         this.plugin.runNextTick(() -> this.plugin.getDataManager().applyExternalRewardLimit(limit));
     }
 
@@ -580,7 +580,7 @@ public class RedisSyncManager {
             CrateKey key = this.plugin.getKeyManager().getKeyById(keyId);
             if (key == null) return;
 
-            Lang.COMMAND_KEY_GIVE_NOTIFY.getMessage().send(player, replacer -> replacer
+Lang.COMMAND_KEY_GIVE_NOTIFY.message().send(player, replacer -> replacer
                 .replace(Placeholders.GENERIC_AMOUNT, amount)
                 .replace(key.replacePlaceholders())
             );
@@ -603,7 +603,7 @@ public class RedisSyncManager {
 
             if (player != null) {
                 this.plugin.getCrateManager().giveCrateItem(player, crate, amount);
-                Lang.COMMAND_GIVE_NOTIFY.getMessage().send(player, replacer -> replacer
+Lang.COMMAND_GIVE_NOTIFY.message().send(player, replacer -> replacer
                     .replace(Placeholders.GENERIC_AMOUNT, amount)
                     .replace(crate.replacePlaceholders())
                 );

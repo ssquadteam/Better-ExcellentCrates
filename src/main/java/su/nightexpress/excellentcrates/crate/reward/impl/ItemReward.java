@@ -114,9 +114,8 @@ public class ItemReward extends AbstractReward {
         this.plugin.getFoliaScheduler().runAtEntity(player, () -> {
             this.getItems().forEach(provider -> {
                 ItemStack itemStack = provider.getItemStack();
-                if (ItemTypes.isDummy(itemStack)) return;
 
-                if (this.placeholderApply) {
+                if (this.allowItemPlaceholders) {
                     replacer.apply(itemStack);
                 }
 

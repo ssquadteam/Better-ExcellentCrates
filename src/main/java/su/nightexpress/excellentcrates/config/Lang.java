@@ -10,6 +10,8 @@ import su.nightexpress.nightcore.locale.LangContainer;
 import su.nightexpress.nightcore.locale.LangEntry;
 import su.nightexpress.nightcore.locale.entry.*;
 import su.nightexpress.nightcore.locale.message.MessageData;
+import su.nightexpress.nightcore.language.entry.LangString;
+import su.nightexpress.nightcore.language.entry.LangUIButton;
 import su.nightexpress.nightcore.util.bridge.RegistryType;
 
 import static su.nightexpress.excellentcrates.Placeholders.*;
@@ -19,6 +21,8 @@ public class Lang implements LangContainer {
 
     public static final TextLocale COMMAND_ARGUMENT_NAME_CRATE = LangEntry.builder("Command.Argument.Name.Crate").text("crate");
     public static final TextLocale COMMAND_ARGUMENT_NAME_KEY   = LangEntry.builder("Command.Argument.Name.Key").text("key");
+    public static final TextLocale COMMAND_ARGUMENT_NAME_PLAYER= LangEntry.builder("Command.Argument.Name.Player").text("player");
+    public static final TextLocale COMMAND_ARGUMENT_NAME_AMOUNT= LangEntry.builder("Command.Argument.Name.Amount").text("amount");
     public static final TextLocale COMMAND_ARGUMENT_NAME_X     = LangEntry.builder("Command.Argument.Name.X").text("x");
     public static final TextLocale COMMAND_ARGUMENT_NAME_Y     = LangEntry.builder("Command.Argument.Name.Y").text("y");
     public static final TextLocale COMMAND_ARGUMENT_NAME_Z     = LangEntry.builder("Command.Argument.Name.Z").text("z");
@@ -220,64 +224,82 @@ public class Lang implements LangContainer {
     public static final TextLocale    INSPECTIONS_REWARD_NO_COMMANDS = LangEntry.builder("Inspections.Reward.NoCommands").text("No commands defined.");
 
     public static final LangString EDITOR_ENTER_AMOUNT = LangString.of("Editor.Enter.Amount",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Amount]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Amount]"))
+    );
 
     public static final LangString EDITOR_ENTER_VALUE = LangString.of("Editor.Enter.Value",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Value]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Value]"))
+    );
 
     public static final LangString EDITOR_ENTER_SECONDS = LangString.of("Editor.Crate.Enter.Seconds",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Seconds Amount]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Seconds Amount]"))
+    );
 
     public static final LangString EDITOR_ENTER_WEIGHT = LangString.of("Editor.Reward.Enter.Chance",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Weight]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Weight]"))
+    );
 
     public static final LangString EDITOR_ENTER_COMMAND = LangString.of("Editor.Reward.Enter.Command",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Command]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Command]"))
+    );
 
     public static final LangString EDITOR_ENTER_CRATE_ID = LangString.of("Editor.Crate.Enter.Id",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Crate Identifier]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Crate Identifier]"))
+    );
 
     public static final LangString EDITOR_ENTER_MODEL_NAME = LangString.of("Editor.Crate.Enter.ModelName",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Model Name]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Model Name]"))
+    );
 
     public static final LangString EDITOR_ENTER_PARTICLE_NAME = LangString.of("Editor.Crate.Enter.Particle.Name",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Particle Name]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Particle Name]"))
+    );
 
     public static final LangString EDITOR_ENTER_KEY_ID = LangString.of("Editor.Crate.Enter.KeyId",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Key Identifier]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Key Identifier]"))
+    );
 
     public static final LangString EDITOR_ENTER_BLOCK_LOCATION = LangString.of("Editor.Crate.Enter.BlockLocation",
-        LIGHT_GRAY.wrap("Click a " + LIGHT_GREEN.wrap("[Block] ") + " to assign crate."));
+        SOFT_GRAY.wrap("Click a " + SOFT_GREEN.wrap("[Block] ") + " to assign crate.")
+    );
 
     public static final LangString EDITOR_ENTER_HOLOGRAM_TEMPLATE = LangString.of("Editor.Crate.Enter.HologramTemplate",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Hologram Template]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Hologram Template]"))
+    );
 
     public static final LangString EDITOR_ENTER_ANIMATION_ID = LangString.of("Editor.Crate.Enter.AnimationConfig",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Animation Name]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Animation Name]"))
+    );
 
     public static final LangString EDITOR_ENTER_PREVIEW_ID = LangString.of("Editor.Crate.Enter.PreviewConfig",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Preview Name]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Preview Name]"))
+    );
 
     public static final LangString EDITOR_ENTER_CURRENCY = LangString.of("Editor.Crate.Enter.Currency",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Currency ID]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Currency ID]"))
+    );
 
     public static final LangString EDITOR_ENTER_REWARD_ID = LangString.of("Editor.Reward.Enter.Id",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Reward Identifier]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Reward Identifier]"))
+    );
 
     public static final LangString EDITOR_ENTER_RARITY = LangString.of("Editor.Reward.Enter.Rarity",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Rarity]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Rarity]"))
+    );
 
     public static final LangString EDITOR_ENTER_PERMISSION = LangString.of("Editor.Reward.Enter.Permissions",
-        LIGHT_GRAY.wrap("Enter " + LIGHT_GREEN.wrap("[Permission Node]")));
+        SOFT_GRAY.wrap("Enter " + SOFT_GREEN.wrap("[Permission Node]"))
+    );
+
+    public static final TextLocale CRATE_ITEM_STACKABLE = LangEntry.builder("Editor.Crate.Item.Stackable").text(WHITE.wrap("Stackable"));
 
     public static final LangUIButton EDITOR_BUTTON_CRATE_ITEM_STACKABLE = LangUIButton.builder("Editor.Button.Crate.ItemStackable", "Item Stackable")
-        .current(CRATE_ITEM_STACKABLE)
         .description("Controls whether crate item is stackable.")
         .click("toggle")
         .build();
 
     public static final LangUIButton EDITOR_BUTTON_SORT_REWARDS = LangUIButton.builder("Editor.Button.Reward.SortMode", GENERIC_MODE)
-        .description("Sort reward by their " + LIGHT_YELLOW.wrap(GENERIC_MODE) + ".")
+        .description("Sort reward by their " + YELLOW.wrap(GENERIC_MODE) + ".")
         .leftClick("ascending")
         .rightClick("descending")
         .build();
@@ -296,6 +318,15 @@ public class Lang implements LangContainer {
             GENERIC_COSTS,
             EMPTY_IF_ABOVE,
             RED.and(BOLD).wrap("YOU CAN'T AFFORD THIS")
+        )
+        .build();
+
+    public static final IconLocale UI_COSTS_OPTION_AVAILABLE = LangEntry.iconBuilder("UI.Costs.Option.Available")
+        .rawName(WHITE.wrap(COST_NAME))
+        .rawLore(
+            GENERIC_COSTS,
+            EMPTY_IF_ABOVE,
+            GREEN.and(BOLD).wrap("YOU CAN AFFORD THIS")
         )
         .build();
 
@@ -332,10 +363,6 @@ public class Lang implements LangContainer {
     public static final TextLocale EDITOR_TITLE_KEY_LIST         = LangEntry.builder("Editor.Title.Keys").text(BLACK.wrap("Keys Editor"));
     public static final TextLocale EDITOR_TITLE_KEY_SETTINGS     = LangEntry.builder("Editor.Title.Key.Settings").text(BLACK.wrap("Key Settings"));
 
-    @Deprecated
-    public static final TextLocale EDITOR_ENTER_AMOUNT            = LangEntry.builder("Editor.Enter.Amount").text(GRAY.wrap("Enter " + GREEN.wrap("[Amount]")));
-    @Deprecated
-    public static final TextLocale EDITOR_ENTER_REWARD_ID         = LangEntry.builder("Editor.Reward.Enter.Id").text(GRAY.wrap("Enter " + GREEN.wrap("[Reward Identifier]")));
 
 
     public static final DialogElementLocale DIALOG_GENERIC_CREATION_BODY = LangEntry.builder("Dialog.Generic.Creation.Body").dialogElement(400,

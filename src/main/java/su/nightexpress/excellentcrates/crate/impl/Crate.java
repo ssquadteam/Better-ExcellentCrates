@@ -30,6 +30,7 @@ import su.nightexpress.excellentcrates.hologram.HologramTemplate;
 import su.nightexpress.excellentcrates.registry.CratesRegistries;
 import su.nightexpress.excellentcrates.util.CrateUtils;
 import su.nightexpress.excellentcrates.util.FoliaBlockUtils;
+import su.nightexpress.excellentcrates.util.ItemHelper;
 import su.nightexpress.excellentcrates.util.pos.WorldPos;
 import su.nightexpress.nightcore.bridge.currency.Currency;
 import su.nightexpress.nightcore.bridge.item.AdaptedItem;
@@ -242,6 +243,14 @@ public class Crate implements ConfigBacked {
         this.saveIfDirty();
     }
 
+    public void markDirty() {
+        this.dirty = true;
+    }
+
+    public boolean hasFile() {
+        return Files.exists(this.filePath);
+    }
+
     public void saveIfDirty() {
         if (this.dirty) {
             this.loadConfig().edit(this::write);
@@ -416,6 +425,32 @@ public class Crate implements ConfigBacked {
         return !this.getEffect().isDummy();
     }
 
+    public int countRewards() {
+        return this.rewardMap.size();
+    }
+
+    public int countMilestones() {
+        return this.milestones.size();
+    }
+
+    public int countMaxOpenings(@NotNull Player player) {
+        return 1;
+    }
+
+    @NotNull
+    public Set<su.nightexpress.excellentcrates.key.CrateKey> getRequiredKeys() {
+        return java.util.Collections.emptySet();
+    }
+
+    public boolean isAllVirtualKeys() {
+        return false;
+    }
+
+    public boolean isGoodKey(@NotNull su.nightexpress.excellentcrates.key.CrateKey key) {
+        Set<su.nightexpress.excellentcrates.key.CrateKey> required = this.getRequiredKeys();
+        return required.isEmpty() || required.contains(key);
+    }
+
     @NotNull
     public CrateEffect getEffect() {
         return CratesRegistries.effectOrDummy(this.effectType);
@@ -560,11 +595,6 @@ public class Crate implements ConfigBacked {
         return this.filePath;
     }
 
-    @NotNull
-    public String getName() {
-        return this.name;
-    }
-
     public void setName(@NotNull String name) {
         this.name = name;
     }
@@ -668,6 +698,14 @@ public class Crate implements ConfigBacked {
 
     public boolean isOpeningCooldownEnabled() {
         return this.openingCooldownEnabled;
+    }
+
+    public boolean hasOpenCooldown() {
+        return this.isOpeningCooldownEnabled() && this.openingCooldownTime != 0;
+    }
+
+    public long getOpenCooldown() {
+        return this.openingCooldownTime;
     }
 
     public void setOpeningCooldownEnabled(boolean openingCooldownEnabled) {

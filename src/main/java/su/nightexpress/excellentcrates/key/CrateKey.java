@@ -23,9 +23,9 @@ import java.util.function.UnaryOperator;
 
 public class CrateKey implements ConfigBacked {
 
-    private String       name;
-    private boolean      virtual;
-    private ItemProvider provider;
+    private final CratesPlugin plugin;
+    private final Path         path;
+    private final String       id;
 
     private String      name;
     private boolean     virtual;
@@ -35,8 +35,9 @@ public class CrateKey implements ConfigBacked {
     private boolean dirty;
 
     public CrateKey(@NotNull CratesPlugin plugin, @NotNull Path path, @NotNull String id) {
+        this.plugin = plugin;
         this.path = path;
-        this.id = id;
+        this.id = id.toLowerCase();
     }
 
     public void load() throws IllegalStateException {
@@ -60,8 +61,8 @@ public class CrateKey implements ConfigBacked {
             config.set("ItemData", adaptedItem);
         }
 
-        this.setProvider(ItemTypes.read(config, "ItemData"));
-        return true;
+        AdaptedItem adapted = ItemHelper.read(config, "ItemData").orElse(ItemHelper.vanilla(new ItemStack(Material.TRIPWIRE_HOOK)));
+        this.setItem(adapted);
     }
 
     public void saveForce() {
@@ -79,7 +80,7 @@ public class CrateKey implements ConfigBacked {
     private void write(@NotNull FileConfig config) {
         config.set("Name", this.name);
         config.set("Virtual", this.virtual);
-        config.set("ItemData", this.provider);
+        config.set("ItemData", this.item);
     }
 
     @NotNull
@@ -90,7 +91,7 @@ public class CrateKey implements ConfigBacked {
     public ProblemReporter collectProblems() {
         ProblemReporter reporter = new ProblemCollector(this.name, this.path.toString());
 
-        if (!this.item.isValid()) reporter.report(Lang.INSPECTIONS_GENERIC_ITEM.get(false));
+        if (this.item == null || !this.item.isValid()) reporter.report(Lang.INSPECTIONS_GENERIC_ITEM.get(false));
 
         return reporter;
     }
@@ -141,6 +142,11 @@ public class CrateKey implements ConfigBacked {
     }
 
     @NotNull
+    public String getNameTranslated() {
+        return this.getName();
+    }
+
+    @NotNull
     public ItemStack getItemStack() {
         return this.getItemStack(true);
     }
@@ -186,5 +192,13 @@ public class CrateKey implements ConfigBacked {
 
     public void setItem(@NotNull AdaptedItem item) {
         this.item = item;
+    }
+
+    public boolean isItemStackable() {
+        return this.itemStackable;
+    }
+
+    public void setItemStackable(boolean itemStackable) {
+        this.itemStackable = itemStackable;
     }
 }

@@ -5,18 +5,22 @@ import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import su.nightexpress.excellentcrates.CratesPlugin;
 import su.nightexpress.excellentcrates.config.Config;
 import su.nightexpress.excellentcrates.config.Keys;
 import su.nightexpress.excellentcrates.crate.cost.type.impl.KeyCostType;
+import su.nightexpress.excellentcrates.crate.impl.Crate;
 import su.nightexpress.excellentcrates.registry.CratesRegistries;
 import su.nightexpress.excellentcrates.user.CrateUser;
 import su.nightexpress.excellentcrates.util.ItemHelper;
 import su.nightexpress.nightcore.config.FileConfig;
 import su.nightexpress.nightcore.manager.AbstractManager;
 import su.nightexpress.nightcore.util.*;
+
+import java.util.stream.Collectors;
 
 import java.io.File;
 import java.io.IOException;
@@ -38,7 +42,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
     protected void onLoad() {
         this.loadCost();
         this.loadKeys();
-        this.plugin.runNextTick(() -> this.runInspections()); // When everything is loaded.
+        this.plugin.runNextTick(this::runInspections); // When everything is loaded.
 
         this.addListener(new KeyListener(this.plugin, this));
         this.addAsyncTask(this::saveKeys, Config.CRATE_SAVE_INTERVAL.get()); // TODO Config
@@ -298,7 +302,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
         }
         else {
             this.plugin.getFoliaScheduler().runAtEntity(player, () -> {
-                ItemStack keyItem = key.getItem();
+                ItemStack keyItem = key.getItemStack();
                 int has = Players.countItem(player, keyItem);
                 if (has > amount) {
                     Players.takeItem(player, keyItem, has - amount);
@@ -338,7 +342,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
             int actualAmount = amount < 0 ? Math.abs(amount) : amount;
             this.plugin.getFoliaScheduler().runAtEntity(player, () -> {
                 for (int i = 0; i < actualAmount; i++) {
-                    ItemStack keyItem = key.getItem();
+                    ItemStack keyItem = key.getItemStack();
                     try {
                         java.util.UUID uuid = this.plugin.getUuidAntiDupeManager().getKeyUuid(keyItem);
                         if (uuid != null) {
@@ -416,6 +420,10 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
                 }
             }
         }
+    }
+
+    private void runInspections() {
+        this.reportProblems();
     }
 
     public boolean givePhysicalKeyCrossServer(@NotNull String keyId, @NotNull UUID playerId, int amount) {

@@ -49,6 +49,9 @@ public class Placeholders extends su.nightexpress.nightcore.util.Placeholders {
 
     public static final String KEY_ID   = "%key_id%";
     public static final String KEY_NAME = "%key_name%";
+    public static final String KEY_UUID = "%key_uuid%";
+    public static final String KEY_CREATION_TIME = "%key_creation_time%";
+    public static final String KEY_VALID_CHECK = "%key_valid_check%";
 
     public static final String REWARD_ID                 = "%reward_id%";
     public static final String REWARD_NAME               = "%reward_name%";

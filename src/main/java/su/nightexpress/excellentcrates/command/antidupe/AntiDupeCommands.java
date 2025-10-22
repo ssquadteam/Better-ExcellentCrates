@@ -8,12 +8,10 @@ import su.nightexpress.excellentcrates.CratesPlugin;
 import su.nightexpress.excellentcrates.config.Lang;
 import su.nightexpress.excellentcrates.config.Perms;
 import su.nightexpress.excellentcrates.key.CrateKey;
-import su.nightexpress.nightcore.command.experimental.CommandContext;
-import su.nightexpress.nightcore.command.experimental.argument.ArgumentTypes;
-import su.nightexpress.nightcore.command.experimental.argument.ParsedArguments;
-import su.nightexpress.nightcore.command.experimental.node.ChainedNode;
-import su.nightexpress.nightcore.command.experimental.node.DirectNode;
-import su.nightexpress.nightcore.util.text.NightMessage;
+import su.nightexpress.nightcore.commands.Commands;
+import su.nightexpress.nightcore.commands.builder.HubNodeBuilder;
+import su.nightexpress.nightcore.commands.context.CommandContext;
+import su.nightexpress.nightcore.commands.context.ParsedArguments;
 import su.nightexpress.nightcore.util.Lists;
 
 import java.util.UUID;
@@ -23,34 +21,28 @@ import java.util.UUID;
  */
 public class AntiDupeCommands {
 
-    public static void load(@NotNull CratesPlugin plugin) {
-        var root = plugin.getRootNode();
-
-        root.addChildren(ChainedNode.builder(plugin, "antidupe")
+    public static void load(@NotNull CratesPlugin plugin, @NotNull HubNodeBuilder root) {
+        root.branch(Commands.hub("antidupe")
             .description("UUID Anti-Dupe system management commands")
             .permission(Perms.COMMAND_ANTIDUPE)
-
-            .addDirect("stats", builder -> builder
+            .branch(Commands.literal("stats")
                 .description("View UUID Anti-Dupe system statistics")
                 .permission(Perms.COMMAND_ANTIDUPE)
                 .executes((context, arguments) -> executeStats(plugin, context.getSender()))
             )
-
-            .addDirect("validate", builder -> builder
+            .branch(Commands.literal("validate")
                 .description("Validate the key in your main hand")
                 .permission(Perms.COMMAND_ANTIDUPE)
                 .playerOnly()
                 .executes((context, arguments) -> executeValidate(plugin, context.getSender()))
             )
-
-            .addDirect("info", builder -> builder
+            .branch(Commands.literal("info")
                 .description("Get detailed information about the key in your main hand")
                 .permission(Perms.COMMAND_ANTIDUPE)
                 .playerOnly()
                 .executes((context, arguments) -> executeInfo(plugin, context.getSender()))
             )
-
-            .addDirect("reload", builder -> builder
+            .branch(Commands.literal("reload")
                 .description("Reload the UUID Anti-Dupe system")
                 .permission(Perms.COMMAND_ANTIDUPE)
                 .executes((context, arguments) -> executeReload(plugin, context.getSender()))

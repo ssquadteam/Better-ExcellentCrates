@@ -25,12 +25,14 @@ public class CommandReward extends AbstractReward {
     private String       name;
     private List<String> description;
     private List<String> commands;
+    private boolean      allowPlaceholders;
 
     public CommandReward(@NotNull CratesPlugin plugin, @NotNull Crate crate, @NotNull String id, @NotNull Rarity rarity) {
         super(plugin, crate, id, rarity);
         this.setName(StringUtil.capitalizeUnderscored(id));
         this.setDescription(new ArrayList<>());
         this.setCommands(new ArrayList<>());
+        this.allowPlaceholders = false;
     }
 
     @Override
@@ -38,6 +40,7 @@ public class CommandReward extends AbstractReward {
         this.setName(config.getString(path + ".Name", StringUtil.capitalizeUnderscored(this.getId())));
         this.setDescription(config.getStringList(path + ".Description"));
         this.setCommands(config.getStringList(path + ".Commands"));
+        this.allowPlaceholders = config.getBoolean(path + ".Placeholder_Apply");
     }
 
     @Override
@@ -45,6 +48,7 @@ public class CommandReward extends AbstractReward {
         config.set(path + ".Name", this.name);
         config.set(path + ".Description", this.description);
         config.set(path + ".Commands", this.commands);
+        config.set(path + ".Placeholder_Apply", this.allowPlaceholders);
     }
 
     @Override
@@ -91,7 +95,7 @@ public class CommandReward extends AbstractReward {
 
         List<String> processedCommands = new ArrayList<>();
         this.getCommands().forEach(command -> {
-            if (this.placeholderApply) {
+            if (this.allowPlaceholders) {
                 command = replacer.apply(command);
             }
             processedCommands.add(command);

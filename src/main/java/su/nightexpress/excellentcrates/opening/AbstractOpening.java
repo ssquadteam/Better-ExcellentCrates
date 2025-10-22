@@ -105,7 +105,7 @@ public abstract class AbstractOpening implements Opening {
             if (this.source.getItem() != null) {
                 // Ensure refund item is added on the player's region thread (Folia-safe)
                 this.plugin.getFoliaScheduler().runAtEntity(this.player, () -> {
-                    Players.addItem(this.player, this.crate.getItem());
+                    Players.addItem(this.player, this.crate.getItemStack());
                 });
             }
         }

@@ -181,7 +181,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
         RewardData limit = this.getRewardLimit(reward, player);
         if (limit != null && !this.removeExpired(limit)) return limit;
 
-        RewardLimit fresh = RewardLimit.create(reward, player);
+        RewardData fresh = RewardData.create(reward, player);
         this.plugin.runTaskAsync(() -> this.plugin.getDataHandler().insertRewardLimit(fresh));
         this.addRewardLimit(fresh);
         return fresh;
@@ -211,7 +211,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
         return true;
     }
 
-    public void deleteRewardLimit(@NotNull RewardLimit limit) {
+    public void deleteRewardLimit(@NotNull RewardData limit) {
         this.plugin.runTaskAsync(() -> this.plugin.getDataHandler().deleteRewardLimit(limit));
         this.rewardLimitMap.remove(getRewardKey(limit));
         this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimitDeleteSingle(
@@ -223,7 +223,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
         String crateId = crate.getId();
 
         this.plugin.runTaskAsync(() -> this.plugin.getDataHandler().deleteRewardLimits(crate));
-        this.rewardLimitMap.keySet().removeIf(key -> key.getCrateId().equalsIgnoreCase(crateId));
+        this.rewardLimitMap.keySet().removeIf(key -> key.crateId().equalsIgnoreCase(crateId));
         this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimitDeleteByCrate(crateId));
     }
 
@@ -232,7 +232,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
         String rewardId = reward.getId();
 
         this.plugin.runTaskAsync(() -> this.plugin.getDataHandler().deleteRewardLimits(reward));
-        this.rewardLimitMap.keySet().removeIf(key -> key.getCrateId().equalsIgnoreCase(crateId) && key.getRewardId().equalsIgnoreCase(rewardId));
+        this.rewardLimitMap.keySet().removeIf(key -> key.crateId().equalsIgnoreCase(crateId) && key.rewardId().equalsIgnoreCase(rewardId));
         this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimitDeleteByReward(crateId, rewardId));
     }
 
@@ -240,7 +240,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
         String holder = playerId.toString();
 
         this.plugin.runTaskAsync(task -> this.plugin.getDataHandler().deleteRewardLimits(playerId));
-        this.rewardLimitMap.keySet().removeIf(key -> key.getHolder().equalsIgnoreCase(holder));
+        this.rewardLimitMap.keySet().removeIf(key -> key.holder().equalsIgnoreCase(holder));
         this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishRewardLimitDeleteByHolder(holder));
     }
 
@@ -273,7 +273,7 @@ public class DataManager extends AbstractManager<CratesPlugin> {
         this.crateDataMap.remove(crateId.toLowerCase());
     }
 
-    public void applyExternalRewardLimit(@NotNull RewardLimit limit) {
+    public void applyExternalRewardLimit(@NotNull RewardData limit) {
         this.addRewardLimit(limit);
     }
 
@@ -282,14 +282,14 @@ public class DataManager extends AbstractManager<CratesPlugin> {
     }
 
     public void applyExternalDeleteRewardLimitsByCrate(@NotNull String crateId) {
-        this.rewardLimitMap.keySet().removeIf(key -> key.getCrateId().equalsIgnoreCase(crateId));
+        this.rewardLimitMap.keySet().removeIf(key -> key.crateId().equalsIgnoreCase(crateId));
     }
 
     public void applyExternalDeleteRewardLimitsByReward(@NotNull String crateId, @NotNull String rewardId) {
-        this.rewardLimitMap.keySet().removeIf(key -> key.getCrateId().equalsIgnoreCase(crateId) && key.getRewardId().equalsIgnoreCase(rewardId));
+        this.rewardLimitMap.keySet().removeIf(key -> key.crateId().equalsIgnoreCase(crateId) && key.rewardId().equalsIgnoreCase(rewardId));
     }
 
     public void applyExternalDeleteRewardLimitsByHolder(@NotNull String holder) {
-        this.rewardLimitMap.keySet().removeIf(key -> key.getHolder().equalsIgnoreCase(holder));
+        this.rewardLimitMap.keySet().removeIf(key -> key.holder().equalsIgnoreCase(holder));
     }
 }

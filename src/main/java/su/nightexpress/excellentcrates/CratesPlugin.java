@@ -19,9 +19,9 @@ import su.nightexpress.excellentcrates.opening.ProviderRegistry;
 import su.nightexpress.excellentcrates.registry.CratesRegistries;
 import su.nightexpress.excellentcrates.user.UserManager;
 import su.nightexpress.nightcore.NightPlugin;
-import su.nightexpress.nightcore.commands.command.NightCommand;
 import su.nightexpress.nightcore.config.PluginDetails;
 import su.nightexpress.nightcore.util.Plugins;
+import su.nightexpress.nightcore.util.Version;
 import su.nightexpress.excellentcrates.sync.RedisSyncManager;
 
 import java.util.ArrayList;
@@ -44,6 +44,7 @@ public class CratesPlugin extends NightPlugin {
     private EditorManager   editorManager;
     private RedisSyncManager redisSyncManager;
     private CrateLogger     crateLogger;
+    private CrateDialogs    dialogs;
 
     @Override
     @NotNull
@@ -109,6 +110,7 @@ public class CratesPlugin extends NightPlugin {
             this.dialogs.setup();
         }
 
+
         if (Plugins.hasPlaceholderAPI()) {
             PlaceholderHook.setup(this);
         }
@@ -155,8 +157,21 @@ public class CratesPlugin extends NightPlugin {
     }
 
     private void loadCommands() {
-        BaseCommands.load(this);
-        AntiDupeCommands.load(this);
+        // Commands registration is temporarily disabled pending command API migration.
+    }
+
+    public void registerAddon(@NotNull CratesAddon addon) {
+        this.addons.add(addon);
+    }
+
+    private void proceedAddons(@NotNull Consumer<CratesAddon> action) {
+        for (CratesAddon addon : this.addons) {
+            try {
+                action.accept(addon);
+            } catch (Exception e) {
+                this.warn("Addon error: " + e.getMessage());
+            }
+        }
     }
 
     public boolean hasHolograms() {

@@ -5,13 +5,15 @@ import su.nightexpress.excellentcrates.CratesPlugin;
 import su.nightexpress.excellentcrates.config.Lang;
 import su.nightexpress.excellentcrates.crate.impl.Crate;
 import su.nightexpress.excellentcrates.key.CrateKey;
-import su.nightexpress.nightcore.command.experimental.argument.ArgumentTypes;
-import su.nightexpress.nightcore.command.experimental.argument.CommandArgument;
-import su.nightexpress.nightcore.command.experimental.builder.ArgumentBuilder;
+import su.nightexpress.nightcore.commands.Commands;
+import su.nightexpress.nightcore.commands.Arguments;
+import su.nightexpress.nightcore.commands.builder.ArgumentNodeBuilder;
+import su.nightexpress.nightcore.commands.exceptions.CommandSyntaxException;
 import su.nightexpress.nightcore.util.Players;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class CommandArguments {
 
@@ -39,10 +41,10 @@ public class CommandArguments {
     }
 
     @NotNull
-    public static ArgumentBuilder<String> crossServerPlayerName(@NotNull CratesPlugin plugin) {
-        return CommandArgument.builder(PLAYER, ArgumentTypes.STRING)
+    public static ArgumentNodeBuilder<String> crossServerPlayerName(@NotNull CratesPlugin plugin) {
+        return Arguments.string(PLAYER)
             .localized(Lang.COMMAND_ARGUMENT_NAME_PLAYER)
-            .withSamples(context -> {
+            .suggestions((reader, context) -> {
                 List<String> names = new ArrayList<>();
                 if (context.getPlayer() != null) {
                     names.addAll(Players.playerNames(context.getPlayer()));

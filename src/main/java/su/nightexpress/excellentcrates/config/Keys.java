@@ -9,6 +9,7 @@ public class Keys {
     public static NamespacedKey crateId;
     public static NamespacedKey keyId;
     public static NamespacedKey keyUuid;
+    public static NamespacedKey linkToolCrateId;
     //public static NamespacedKey rewardId;
     public static NamespacedKey dummyItem;
 
@@ -16,6 +17,7 @@ public class Keys {
         crateId = new NamespacedKey(plugin, "crate.id");
         keyId = new NamespacedKey(plugin, "crate_key.id");
         keyUuid = new NamespacedKey(plugin, "crate_key.uuid");
+        linkToolCrateId = new NamespacedKey(plugin, "crate_link_tool.crate_id");
         //rewardId = new NamespacedKey(plugin, "reward.id");
         dummyItem = new NamespacedKey(plugin, "dummy_item");
     }
@@ -24,6 +26,7 @@ public class Keys {
         crateId = null;
         keyId = null;
         keyUuid = null;
+        linkToolCrateId = null;
         //rewardId = null;
         dummyItem = null;
     }

@@ -64,21 +64,24 @@ public class PlaceholderHook {
             this.userPlaceholders.put("openings_raw", (player, crate) -> {
                 if (player == null) return null;
 
-                CrateUser user = plugin.getUserManager().getOrFetch(player);
-                return String.valueOf(user.getCrateData(crate).getOpenings());
+                CrateUser user = plugin.getUserManager().getLoaded(player);
+                int openings = (user == null) ? 0 : user.getCrateData(crate).getOpenings();
+                return String.valueOf(openings);
             });
 
             this.userPlaceholders.put("openings", (player, crate) -> {
                 if (player == null) return null;
 
-                CrateUser user = plugin.getUserManager().getOrFetch(player);
-                return NumberUtil.format(user.getCrateData(crate).getOpenings());
+                CrateUser user = plugin.getUserManager().getLoaded(player);
+                int openings = (user == null) ? 0 : user.getCrateData(crate).getOpenings();
+                return NumberUtil.format(openings);
             });
 
             this.userPlaceholders.put("cooldown", (player, crate) -> {
                 if (player == null) return null;
 
-                CrateUser user = plugin.getUserManager().getOrFetch(player);
+                CrateUser user = plugin.getUserManager().getLoaded(player);
+                if (user == null) return Lang.OTHER_COOLDOWN_READY.text();
                 UserCrateData data = user.getCrateData(crate);
                 if (!data.hasCooldown()) return Lang.OTHER_COOLDOWN_READY.text();
 
@@ -88,8 +91,8 @@ public class PlaceholderHook {
             this.userPlaceholders.put("next_milestone_openings", (player, crate) -> {
                 if (player == null) return null;
 
-                CrateUser user = plugin.getUserManager().getOrFetch(player);
-                int milestones = user.getCrateData(crate).getMilestone();
+                CrateUser user = plugin.getUserManager().getLoaded(player);
+                int milestones = (user == null) ? 0 : user.getCrateData(crate).getMilestone();
                 Milestone milestone = crate.getNextMilestone(milestones);
                 if (milestone == null) return Lang.OTHER_NEXT_MILESTONE_EMPTY.text();
 
@@ -99,8 +102,8 @@ public class PlaceholderHook {
             this.userPlaceholders.put("next_milestone_reward", (player, crate) -> {
                 if (player == null) return null;
 
-                CrateUser user = plugin.getUserManager().getOrFetch(player);
-                int milestones = user.getCrateData(crate).getMilestone();
+                CrateUser user = plugin.getUserManager().getLoaded(player);
+                int milestones = (user == null) ? 0 : user.getCrateData(crate).getMilestone();
                 Milestone milestone = crate.getNextMilestone(milestones);
                 Reward reward = milestone == null ? null : milestone.getReward();
                 if (reward == null) return Lang.OTHER_NEXT_MILESTONE_EMPTY.text();

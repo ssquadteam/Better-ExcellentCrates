@@ -23,6 +23,7 @@ import su.nightexpress.nightcore.config.PluginDetails;
 import su.nightexpress.nightcore.util.Plugins;
 import su.nightexpress.nightcore.util.Version;
 import su.nightexpress.excellentcrates.sync.RedisSyncManager;
+import su.nightexpress.nightcore.commands.command.NightCommand;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -110,7 +111,6 @@ public class CratesPlugin extends NightPlugin {
             this.dialogs.setup();
         }
 
-
         if (Plugins.hasPlaceholderAPI()) {
             PlaceholderHook.setup(this);
         }
@@ -119,6 +119,8 @@ public class CratesPlugin extends NightPlugin {
             this.hologramManager = new HologramManager(this);
             this.hologramManager.setup();
         }
+
+        this.loadCommands();
     }
 
     @Override
@@ -157,7 +159,10 @@ public class CratesPlugin extends NightPlugin {
     }
 
     private void loadCommands() {
-        // Commands registration is temporarily disabled pending command API migration.
+        this.rootCommand = NightCommand.forPlugin(this, root -> {
+            BaseCommands.load(this, root);
+            AntiDupeCommands.load(this, root);
+        });
     }
 
     public void registerAddon(@NotNull CratesAddon addon) {

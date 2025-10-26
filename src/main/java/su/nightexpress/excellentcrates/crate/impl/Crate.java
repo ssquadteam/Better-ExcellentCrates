@@ -434,7 +434,14 @@ public class Crate implements ConfigBacked {
     }
 
     public int countMaxOpenings(@NotNull Player player) {
-        return 1;
+        if (!this.hasCost()) {
+            return -1; // No cost => unlimited openings
+        }
+        return this.getCosts().stream()
+            .filter(Cost::isAvailable)
+            .mapToInt(cost -> cost.countMaxOpenings(player))
+            .max()
+            .orElse(0);
     }
 
     @NotNull

@@ -50,8 +50,16 @@ public class PlaceholderHook {
             this.userPlaceholders.put("keys", (player, crate) -> {
                 if (player == null) return null;
 
-                int amount = crate.countMaxOpenings(player);
-                return amount < 0 ? CoreLang.OTHER_INFINITY.text() : String.valueOf(amount);
+                int totalKeys = 0;
+                for (var cost : crate.getCosts()) {
+                    if (!cost.isAvailable()) continue;
+                    for (var entry : cost.getEntries()) {
+                        if (entry instanceof su.nightexpress.excellentcrates.crate.cost.entry.impl.KeyCostEntry keyEntry) {
+                            totalKeys += keyEntry.countKeys(player);
+                        }
+                    }
+                }
+                return String.valueOf(totalKeys);
             });
 
             this.userPlaceholders.put("openings_available", (player, crate) -> {

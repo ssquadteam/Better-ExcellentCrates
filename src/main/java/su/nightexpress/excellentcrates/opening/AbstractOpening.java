@@ -108,6 +108,8 @@ public abstract class AbstractOpening implements Opening {
                     Players.addItem(this.player, this.crate.getItemStack());
                 });
             }
+        } else {
+            this.getRewards().forEach(reward -> this.plugin.getCrateManager().giveReward(this.player, reward));
         }
 
         this.plugin.getOpeningManager().removeOpening(this.getPlayer());

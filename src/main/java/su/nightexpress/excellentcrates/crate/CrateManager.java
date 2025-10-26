@@ -652,16 +652,33 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
         RewardData globalData = this.plugin.getDataManager().getRewardLimitOrCreate(reward, null);
         RewardData playerData = this.plugin.getDataManager().getRewardLimitOrCreate(reward, player);
 
+        boolean updatedGlobal = false;
+        boolean updatedPlayer = false;
+
         if (limits.hasGlobalCooldown()) {
             globalData.setCooldownUntil(limits.generateGlobalCooldown());
             globalData.addRoll(1);
             globalData.setSaveRequired(true);
+            updatedGlobal = true;
         }
 
         if (limits.hasPlayerCooldown()) {
             playerData.setCooldownUntil(limits.generatePlayerCooldown());
             playerData.addRoll(1);
             playerData.setSaveRequired(true);
+            updatedPlayer = true;
+        }
+
+        // Publish immediately via Redis for near-realtime cross-server sync (optional)
+        if (Config.isRewardLimitsSynchronized()) {
+            final boolean gUpdated = updatedGlobal;
+            final boolean pUpdated = updatedPlayer;
+            final RewardData gData = globalData;
+            final RewardData pData = playerData;
+            this.plugin.getRedisSyncManager().ifPresent(sync -> {
+                if (gUpdated) sync.publishRewardLimit(gData);
+                if (pUpdated) sync.publishRewardLimit(pData);
+            });
         }
     }
 

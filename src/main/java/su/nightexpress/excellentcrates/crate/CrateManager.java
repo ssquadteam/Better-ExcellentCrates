@@ -423,6 +423,23 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
             .orElse(false);
     }
 
+    /**
+     * Cross-server crate item giving by player name (when UUID not known on this node)
+     */
+    public boolean giveCrateItemCrossServerByName(@NotNull Crate crate, @NotNull String playerName, int amount) {
+        Player player = Bukkit.getPlayerExact(playerName);
+        if (player != null) {
+            this.giveCrateItem(player, crate, amount);
+            return true;
+        }
+        return this.plugin.getRedisSyncManager()
+            .map(sync -> {
+                sync.publishGiveCrateItemByName(crate.getId(), playerName, amount);
+                return true;
+            })
+            .orElse(false);
+    }
+
     public void openAmountMenu(@NotNull Player player, @NotNull CrateSource source, @Nullable Cost cost) {
         this.amountMenu.open(player, source, cost);
     }

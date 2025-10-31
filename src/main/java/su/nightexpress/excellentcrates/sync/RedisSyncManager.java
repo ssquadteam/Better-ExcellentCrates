@@ -302,6 +302,21 @@ public class RedisSyncManager {
     }
 
     /**
+     * Publishes cross-server crate item giving by player name (when UUID is not known on this node)
+     */
+    public void publishGiveCrateItemByName(@NotNull String crateId, @NotNull String playerName, int amount) {
+        if (!isActive()) return;
+
+        JsonObject d = new JsonObject();
+        d.addProperty("playerName", playerName);
+        d.addProperty("crateId", crateId);
+        d.addProperty("amount", amount);
+        d.addProperty("origin", this.nodeId);
+
+        publish("GIVE_CRATE_ITEM_BY_NAME", d);
+    }
+
+    /**
      * Publishes crate opening state cleanup across servers
      */
     public void publishOpeningStateCleanup(@NotNull UUID playerId, @NotNull String reason) {
@@ -397,6 +412,7 @@ public class RedisSyncManager {
                 case "KEY_DELIVERY_NOTIFICATION" -> applyKeyDeliveryNotification(data);
                 case "OPENING_STATE_CLEANUP" -> applyOpeningStateCleanup(data);
                 case "GIVE_CRATE_ITEM" -> applyGiveCrateItem(data);
+                case "GIVE_CRATE_ITEM_BY_NAME" -> applyGiveCrateItemByName(data);
                 case "PLAYER_NAMES_UPDATE" -> applyPlayerNamesUpdate(data);
                 default -> {}
             }
@@ -603,11 +619,33 @@ Lang.COMMAND_KEY_GIVE_NOTIFY.message().send(player, replacer -> replacer
 
             if (player != null) {
                 this.plugin.getCrateManager().giveCrateItem(player, crate, amount);
-Lang.COMMAND_GIVE_NOTIFY.message().send(player, replacer -> replacer
+                Lang.COMMAND_GIVE_NOTIFY.message().send(player, replacer -> replacer
                     .replace(Placeholders.GENERIC_AMOUNT, amount)
                     .replace(crate.replacePlaceholders())
                 );
                 this.plugin.info("Gave crate '" + crateId + "' x" + amount + " to " + player.getName() + " via Redis request from " + origin + ".");
+            }
+        });
+    }
+
+    private void applyGiveCrateItemByName(@NotNull JsonObject data) {
+        String playerName = data.get("playerName").getAsString();
+        String crateId = data.get("crateId").getAsString();
+        int amount = data.get("amount").getAsInt();
+        String origin = data.has("origin") && !data.get("origin").isJsonNull() ? data.get("origin").getAsString() : "unknown";
+
+        this.plugin.runTask(task -> {
+            Player player = Bukkit.getPlayerExact(playerName);
+            var crate = this.plugin.getCrateManager().getCrateById(crateId);
+            if (crate == null) return;
+
+            if (player != null) {
+                this.plugin.getCrateManager().giveCrateItem(player, crate, amount);
+                Lang.COMMAND_GIVE_NOTIFY.message().send(player, replacer -> replacer
+                    .replace(Placeholders.GENERIC_AMOUNT, amount)
+                    .replace(crate.replacePlaceholders())
+                );
+                this.plugin.info("Gave crate '" + crateId + "' x" + amount + " to " + player.getName() + " via Redis-by-name request from " + origin + ".");
             }
         });
     }

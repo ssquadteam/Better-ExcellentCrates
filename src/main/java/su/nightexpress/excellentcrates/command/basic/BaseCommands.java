@@ -208,9 +208,24 @@ Lang.COMMAND_DROP_DONE.message().send(context.getSender(), replacer -> replacer
         int amount = arguments.getInt(CommandArguments.AMOUNT, 1);
         if (amount <= 0) return false;
 
-        plugin.getUserManager().manageUser(arguments.getString(CommandArguments.PLAYER), user -> {
+        String targetName = arguments.getString(CommandArguments.PLAYER);
+        plugin.getUserManager().manageUser(targetName, user -> {
             if (user == null) {
-                context.errorBadPlayer();
+                // Fallback: if user is not known on this node, try cross-server by name via Redis.
+                boolean dispatched = plugin.getRedisSyncManager()
+                    .map(sync -> {
+                        plugin.getCrateManager().giveCrateItemCrossServerByName(crate, targetName, amount);
+                        return true;
+                    }).orElse(false);
+                if (!dispatched) {
+                    context.errorBadPlayer();
+                } else if (!context.hasFlag(CommandFlags.SILENT_FEEDBACK)) {
+                    Lang.COMMAND_GIVE_DONE.message().send(context.getSender(), replacer -> replacer
+                        .replace(Placeholders.PLAYER_NAME, targetName)
+                        .replace(Placeholders.GENERIC_AMOUNT, amount)
+                        .replace(crate.replacePlaceholders())
+                    );
+                }
                 return;
             }
 

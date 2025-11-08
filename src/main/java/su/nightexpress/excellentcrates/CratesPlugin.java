@@ -2,7 +2,7 @@ package su.nightexpress.excellentcrates;
 
 import org.jetbrains.annotations.NotNull;
 import su.nightexpress.excellentcrates.api.addon.CratesAddon;
-import su.nightexpress.excellentcrates.command.basic.BaseCommands;
+import su.nightexpress.excellentcrates.command.BaseCommands;
 import su.nightexpress.excellentcrates.command.antidupe.AntiDupeCommands;
 import su.nightexpress.excellentcrates.config.*;
 import su.nightexpress.excellentcrates.crate.CrateManager;
@@ -160,7 +160,7 @@ public class CratesPlugin extends NightPlugin {
 
     private void loadCommands() {
         this.rootCommand = NightCommand.forPlugin(this, root -> {
-            BaseCommands.load(this, root);
+            new BaseCommands(this).load(root);
             AntiDupeCommands.load(this, root);
         });
     }

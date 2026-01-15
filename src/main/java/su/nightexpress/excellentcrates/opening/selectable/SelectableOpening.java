@@ -112,7 +112,8 @@ public class SelectableOpening extends AbstractOpening {
         super.onStop();
 
         if (this.menu.isViewer(this.player)) {
-            this.player.closeInventory(); // Let the GUI handle close event properly.
+            // Let the GUI handle close event properly.
+            this.plugin.getFoliaScheduler().runAtEntity(player, this.player::closeInventory);
         }
     }
 

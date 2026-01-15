@@ -1,9 +1,9 @@
 package su.nightexpress.excellentcrates.crate;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
-import org.bukkit.Bukkit;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
@@ -54,7 +54,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.UUID;
 
 public class CrateManager extends AbstractManager<CratesPlugin> {
 
@@ -141,9 +140,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
                 rarities.add(new Rarity(this.plugin, "mythic", TagWrappers.SOFT_PURPLE.wrap("Mythic"), 5));
             }
 
-            rarities.forEach(rarity -> {
-                rarity.write(config, "Rewards.Rarities." + rarity.getId());
-            });
+            rarities.forEach(rarity -> rarity.write(config, "Rewards.Rarities." + rarity.getId()));
         }
 
         config.getSection("Rewards.Rarities").forEach(rarityId -> {
@@ -591,7 +588,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
             return false;
         }
 
-        player.closeInventory(); // Cheat clients must die
+        plugin.getFoliaScheduler().runAtEntity(player, (player::closeInventory));
 
         Opening opening = this.plugin.getOpeningManager().createOpening(player, source, realCost);
 
@@ -742,9 +739,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
                 Location location = worldPos.toLocation();
                 if (location == null) return;
 
-                CrateUtils.getPlayersForEffects(location).forEach(player -> {
-                    effect.playStep(location, particle, player);
-                });
+                CrateUtils.getPlayersForEffects(location).forEach(player -> effect.playStep(location, particle, player));
             });
         });
 

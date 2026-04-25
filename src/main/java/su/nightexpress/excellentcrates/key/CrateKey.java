@@ -11,6 +11,7 @@ import su.nightexpress.excellentcrates.util.ItemHelper;
 import su.nightexpress.nightcore.bridge.item.AdaptedItem;
 import su.nightexpress.nightcore.config.FileConfig;
 import su.nightexpress.nightcore.manager.ConfigBacked;
+import su.nightexpress.nightcore.util.ItemReplacer;
 import su.nightexpress.nightcore.util.ItemUtil;
 import su.nightexpress.nightcore.util.PDCUtil;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
@@ -166,7 +167,7 @@ public class CrateKey implements ConfigBacked {
             java.util.UUID uuid = this.plugin.getUuidAntiDupeManager().getKeyUuid(item);
             if (uuid != null) {
                 long created = this.plugin.getUuidAntiDupeManager().getCreationTime(uuid);
-                su.nightexpress.nightcore.util.ItemReplacer.create(item)
+                ItemReplacer.create(item)
                     .readMeta()
                     .replace(su.nightexpress.excellentcrates.Placeholders.KEY_UUID, () -> uuid.toString())
                     .replace(su.nightexpress.excellentcrates.Placeholders.KEY_CREATION_TIME, () -> {

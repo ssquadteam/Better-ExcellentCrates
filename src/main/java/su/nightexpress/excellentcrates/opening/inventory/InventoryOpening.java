@@ -80,13 +80,11 @@ public class InventoryOpening extends AbstractOpening implements AsyncProcessabl
         // Open the prepared view
         this.player.openInventory(this.view);
         // Re-apply defaults next tick for Paper compatibility where contents may be reset on open
-        this.plugin.getFoliaScheduler().runNextTick(() -> {
-            this.config.getDefaultItems().values().forEach(menuItem -> {
-                for (int slot : menuItem.getSlots()) {
-                    this.view.getTopInventory().setItem(slot, menuItem.getItem().getItemStack());
-                }
-            });
-        });
+        this.plugin.getFoliaScheduler().runNextTick(() -> this.config.getDefaultItems().values().forEach(menuItem -> {
+            for (int slot : menuItem.getSlots()) {
+                this.view.getTopInventory().setItem(slot, menuItem.getItem().getItemStack());
+            }
+        }));
 
         this.launched = true;
         this.launchTicks = 0L;
@@ -152,7 +150,7 @@ public class InventoryOpening extends AbstractOpening implements AsyncProcessabl
         super.onStop();
 
         if (this.player.getOpenInventory() == this.view) {
-            this.player.closeInventory();
+            this.plugin.getFoliaScheduler().runAtEntity(player, this.player::closeInventory);
         }
     }
 

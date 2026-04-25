@@ -30,7 +30,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static su.nightexpress.excellentcrates.Placeholders.*;
-import static su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers.*;
+import static su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers.BLACK;
+import static su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers.DARK_GRAY;
 
 public class OpeningCostMenu extends LinkedMenu<CratesPlugin, CrateSource> implements ConfigBased {
 
@@ -77,17 +78,15 @@ public class OpeningCostMenu extends LinkedMenu<CratesPlugin, CrateSource> imple
                 .toMenuItem()
                 .setPriority(Integer.MAX_VALUE)
                 .setSlots(slot)
-                .setHandler((viewer1, event) -> {
-                    this.runNextTick(() -> {
+                    .setHandler((viewer1, event) -> this.runNextTick(() -> {
                         if (maxOpenings > 1 && Config.isMassOpenEnabled()) {
                             this.manager.openAmountMenu(player, source, cost);
                             return;
                         }
 
-                        player.closeInventory();
+                        this.plugin.getFoliaScheduler().runAtEntity(player, player::closeInventory);
                         this.manager.openCrate(player, source, OpenOptions.empty(), cost);
-                    });
-                })
+                    }))
                 .build()
             );
         }

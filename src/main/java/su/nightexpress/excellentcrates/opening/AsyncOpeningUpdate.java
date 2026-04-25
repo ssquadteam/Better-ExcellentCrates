@@ -70,25 +70,30 @@ public class AsyncOpeningUpdate {
                shouldStopOpening || 
                shouldCompleteOpening;
     }
-    
+
     public void applyToMainThread() {
-        for (Map.Entry<Integer, ItemStack> entry : inventoryUpdates.entrySet()) {
-            inventory.setItem(entry.getKey(), entry.getValue());
-        }
-        
+        if (!player.isOnline()) return;
+
+        this.inventoryUpdates.forEach((slot, item) -> {
+            if (slot >= 0 && slot < inventory.getSize()) {
+                inventory.setItem(slot, item);
+            }
+        });
+
         for (NightSound sound : soundsToPlay.values()) {
             sound.play(player);
         }
-        
+
+        if (shouldCloseInventory) {
+            player.closeInventory();
+            return;
+        }
+
         if (shouldOpenInventory && inventoryToOpen != null) {
             player.openInventory(inventoryToOpen);
         }
-        
-        if (shouldCloseInventory) {
-            player.closeInventory();
-        }
     }
-    
+
     @NotNull
     public Map<Integer, ItemStack> getInventoryUpdates() {
         return new HashMap<>(inventoryUpdates);

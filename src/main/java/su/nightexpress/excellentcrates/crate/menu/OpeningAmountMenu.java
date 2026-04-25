@@ -23,8 +23,9 @@ import su.nightexpress.nightcore.ui.menu.data.MenuLoader;
 import su.nightexpress.nightcore.ui.menu.type.LinkedMenu;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
 
-import static su.nightexpress.excellentcrates.Placeholders.*;
-import static su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers.*;
+import static su.nightexpress.excellentcrates.Placeholders.CRATE_NAME;
+import static su.nightexpress.excellentcrates.Placeholders.GENERIC_MAX;
+import static su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers.BLACK;
 
 public class OpeningAmountMenu extends LinkedMenu<CratesPlugin, OpeningAmountMenu.Data> implements ConfigBased {
 
@@ -78,12 +79,10 @@ public class OpeningAmountMenu extends LinkedMenu<CratesPlugin, OpeningAmountMen
                 .toMenuItem()
                 .setSlots(slots[index])
                 .setPriority(Integer.MAX_VALUE)
-                .setHandler((viewer1, event) -> {
-                    this.runNextTick(() -> {
-                        player.closeInventory();
+                    .setHandler((viewer1, event) -> this.runNextTick(() -> {
+                        this.plugin.getFoliaScheduler().runAtEntity(player, player::closeInventory);
                         this.manager.multiOpenCrate(player, source, OpenOptions.empty(), cost, amount);
-                    });
-                })
+                    }))
                 .build()
             );
         }

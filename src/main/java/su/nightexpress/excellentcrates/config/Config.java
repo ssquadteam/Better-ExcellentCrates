@@ -158,6 +158,18 @@ public class Config {
         "Redis key prefix used for cross-server crate cooldown reservations."
     );
 
+    public static final ConfigValue<String> CRATE_CLAIM_STATUS_READY = ConfigValue.create("Crate.ClaimStatus.Ready",
+        "&a&nClaimable Now",
+        "Sets text returned by the %excellentcrates_claim_status_<crate>% placeholder when the crate can be opened."
+    );
+
+    public static final ConfigValue<String> CRATE_CLAIM_STATUS_COOLDOWN = ConfigValue.create("Crate.ClaimStatus.Cooldown",
+        "&fClaimable In &a&n%time%",
+        "Sets text returned by the %excellentcrates_claim_status_<crate>% placeholder when the crate is on cooldown.",
+        "Placeholders:",
+        "- %time%: Remaining cooldown time."
+    );
+
     public static final ConfigValue<Integer> CRATE_EFFECTS_VISIBILITY_DISTANCE = ConfigValue.create("Crate.Effects.Visibility_Distance",
         24,
         "Sets max. distance where players can see crate particles and holograms."

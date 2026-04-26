@@ -5,6 +5,7 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import su.nightexpress.excellentcrates.CratesPlugin;
+import su.nightexpress.excellentcrates.Placeholders;
 import su.nightexpress.excellentcrates.api.crate.Reward;
 import su.nightexpress.excellentcrates.config.Config;
 import su.nightexpress.excellentcrates.config.Lang;
@@ -100,12 +101,15 @@ public class PlaceholderHook {
                 if (player == null) return null;
 
                 CrateUser user = plugin.getUserManager().getLoaded(player);
-                if (user == null) return "Claimable Now";
+                if (user == null) return Config.CRATE_CLAIM_STATUS_READY.get();
 
                 UserCrateData data = user.getCrateData(crate);
-                if (!data.hasCooldown()) return "Claimable Now";
+                if (!data.hasCooldown()) return Config.CRATE_CLAIM_STATUS_READY.get();
 
-                return "Claimable in " + formatCompactDuration(data.getOpenCooldown() - System.currentTimeMillis());
+                return Config.CRATE_CLAIM_STATUS_COOLDOWN.get().replace(
+                    Placeholders.GENERIC_TIME,
+                    formatCompactDuration(data.getOpenCooldown() - System.currentTimeMillis())
+                );
             });
 
             this.userPlaceholders.put("next_milestone_openings", (player, crate) -> {

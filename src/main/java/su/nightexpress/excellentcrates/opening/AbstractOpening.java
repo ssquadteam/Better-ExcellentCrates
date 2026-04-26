@@ -7,6 +7,7 @@ import su.nightexpress.excellentcrates.CratesPlugin;
 import su.nightexpress.excellentcrates.Placeholders;
 import su.nightexpress.excellentcrates.api.crate.Reward;
 import su.nightexpress.excellentcrates.api.opening.Opening;
+import su.nightexpress.excellentcrates.config.Config;
 import su.nightexpress.excellentcrates.config.Lang;
 import su.nightexpress.excellentcrates.crate.cost.Cost;
 import su.nightexpress.excellentcrates.crate.impl.Crate;
@@ -108,6 +109,7 @@ public abstract class AbstractOpening implements Opening {
                     Players.addItem(this.player, this.crate.getItemStack());
                 });
             }
+            this.releaseCrossServerCooldown();
         } else {
             this.getRewards().forEach(reward -> this.plugin.getCrateManager().giveReward(this.player, reward));
         }
@@ -133,6 +135,9 @@ public abstract class AbstractOpening implements Opening {
 
                     if (crate.hasOpenCooldown() && !crate.hasCooldownBypassPermission(player)) {
                         userData.setCooldown(crate.getOpenCooldown());
+                        if (Config.isCrossServerCooldownCrate(crate.getId())) {
+                            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.refreshCrateCooldown(player.getUniqueId(), crate.getId(), crate.getOpenCooldown()));
+                        }
                     }
 
                     if (crate.hasMilestones()) {
@@ -148,6 +153,23 @@ public abstract class AbstractOpening implements Opening {
                 });
             });
         }
+    }
+
+    private void releaseCrossServerCooldown() {
+        if (!this.crate.hasOpenCooldown() || this.crate.getOpenCooldown() <= 0L || !Config.isCrossServerCooldownCrate(this.crate.getId())) {
+            return;
+        }
+
+        this.plugin.getRedisSyncManager().ifPresent(sync -> sync.releaseCrateCooldown(this.player.getUniqueId(), this.crate.getId()));
+
+        this.plugin.getUserManager().getOrFetchAsync(this.player.getUniqueId()).thenAccept(user -> {
+            if (user == null) return;
+
+            this.plugin.getFoliaScheduler().runNextTick(() -> {
+                UserCrateData userData = user.getCrateData(this.crate);
+                userData.removeCooldown();
+            });
+        });
     }
 
     @Override

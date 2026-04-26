@@ -35,6 +35,7 @@ import su.nightexpress.excellentcrates.data.crate.UserCrateData;
 import su.nightexpress.excellentcrates.data.reward.RewardData;
 import su.nightexpress.excellentcrates.hologram.HologramTemplate;
 import su.nightexpress.excellentcrates.registry.CratesRegistries;
+import su.nightexpress.excellentcrates.sync.RedisSyncManager;
 import su.nightexpress.excellentcrates.user.CrateUser;
 import su.nightexpress.excellentcrates.util.CrateUtils;
 import su.nightexpress.excellentcrates.util.InteractType;
@@ -588,6 +589,26 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
             return false;
         }
 
+        if (!options.has(OpenOptions.Option.IGNORE_COOLDOWN) && !crate.hasCooldownBypassPermission(player) && this.isCrossServerCooldownEnabled(crate)) {
+            RedisSyncManager.CrateCooldownReservation reservation = this.plugin.getRedisSyncManager()
+                .map(sync -> sync.reserveCrateCooldown(player.getUniqueId(), crate.getId(), crate.getOpenCooldown()))
+                .orElse(RedisSyncManager.CrateCooldownReservation.unavailable());
+
+            if (reservation.available() && !reservation.allowed()) {
+                crateData.setOpenCooldown(reservation.cooldownUntil());
+                Lang.CRATE_OPEN_ERROR_COOLDOWN_TEMPORARY.message().send(player, replacer -> replacer
+                    .replace(Placeholders.GENERIC_TIME, TimeFormats.formatDuration(crateData.getOpenCooldown(), TimeFormatType.LITERAL))
+                    .replace(crate.replacePlaceholders())
+                );
+                this.pushback(player, source);
+                return false;
+            }
+
+            if (reservation.allowed()) {
+                crateData.setOpenCooldown(reservation.cooldownUntil());
+            }
+        }
+
         plugin.getFoliaScheduler().runAtEntity(player, (player::closeInventory));
 
         Opening opening = this.plugin.getOpeningManager().createOpening(player, source, realCost);
@@ -604,6 +625,10 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
         }
 
         return true;
+    }
+
+    private boolean isCrossServerCooldownEnabled(@NotNull Crate crate) {
+        return crate.hasOpenCooldown() && Config.isCrossServerCooldownCrate(crate.getId()) && crate.getOpenCooldown() > 0L;
     }
 
     private void pushback(@NotNull Player player, @NotNull CrateSource source) {

@@ -140,6 +140,24 @@ public class Config {
         "When enabled allows crates to be assigned to 'air' blocks and disables block validation on crate load."
     );
 
+    public static final ConfigValue<Boolean> CRATE_CROSS_SERVER_COOLDOWN_ENABLED = ConfigValue.create("Crate.CrossServerCooldown.Enabled",
+        true,
+        "When enabled, selected crate opening cooldowns are reserved atomically in Redis.",
+        "This prevents the same player from claiming the same timed crate on multiple servers before database/player sync catches up.",
+        "[*] Requires Redis to be enabled. If Redis is unavailable, the normal local cooldown behavior is used."
+    );
+
+    public static final ConfigValue<List<String>> CRATE_CROSS_SERVER_COOLDOWN_CRATES = ConfigValue.create("Crate.CrossServerCooldown.Crates",
+        List.of("daily"),
+        "Crate IDs whose opening cooldowns should be synchronized immediately across servers.",
+        "Use this for once-per-day crates shared by cross-region servers."
+    );
+
+    public static final ConfigValue<String> CRATE_CROSS_SERVER_COOLDOWN_REDIS_PREFIX = ConfigValue.create("Crate.CrossServerCooldown.Redis_Prefix",
+        "excellentcrates:cooldown",
+        "Redis key prefix used for cross-server crate cooldown reservations."
+    );
+
     public static final ConfigValue<Integer> CRATE_EFFECTS_VISIBILITY_DISTANCE = ConfigValue.create("Crate.Effects.Visibility_Distance",
         24,
         "Sets max. distance where players can see crate particles and holograms."
@@ -297,6 +315,10 @@ public class Config {
 
     public static boolean isMassOpenEnabled() {
         return FEATURE_MASS_OPENING.get();
+    }
+
+    public static boolean isCrossServerCooldownCrate(@NotNull String crateId) {
+        return CRATE_CROSS_SERVER_COOLDOWN_ENABLED.get() && CRATE_CROSS_SERVER_COOLDOWN_CRATES.get().stream().anyMatch(crateId::equalsIgnoreCase);
     }
 
     public static final ConfigValue<Integer> ANTI_DUPE_CACHE_MAX_VALID = ConfigValue.create("Data.AntiDupe.Cache.MaxValid",

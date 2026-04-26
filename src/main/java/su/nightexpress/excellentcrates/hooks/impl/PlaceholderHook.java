@@ -96,6 +96,18 @@ public class PlaceholderHook {
                 return TimeFormats.formatDuration(data.getOpenCooldown(), Config.CRATE_COOLDOWN_FORMAT_TYPE.get());
             });
 
+            this.userPlaceholders.put("claim_status", (player, crate) -> {
+                if (player == null) return null;
+
+                CrateUser user = plugin.getUserManager().getLoaded(player);
+                if (user == null) return "Claimable Now";
+
+                UserCrateData data = user.getCrateData(crate);
+                if (!data.hasCooldown()) return "Claimable Now";
+
+                return "Claimable in " + formatCompactDuration(data.getOpenCooldown() - System.currentTimeMillis());
+            });
+
             this.userPlaceholders.put("next_milestone_openings", (player, crate) -> {
                 if (player == null) return null;
 
@@ -121,6 +133,16 @@ public class PlaceholderHook {
 
             this.userPlaceholders.put("latest_opener", (player, crate) -> crate.getLastOpenerName());
             this.userPlaceholders.put("latest_rolled_reward", (player, crate) -> crate.getLastRewardName());
+        }
+
+        @NotNull
+        private static String formatCompactDuration(long millis) {
+            long seconds = Math.max(0L, millis / 1000L);
+            long hours = seconds / 3600L;
+            long minutes = (seconds % 3600L) / 60L;
+            long secs = seconds % 60L;
+
+            return hours + "h " + minutes + "m " + secs + "s";
         }
 
         @Override

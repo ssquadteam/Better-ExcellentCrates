@@ -13,6 +13,7 @@ import su.nightexpress.nightcore.lib.redis.jedis.HostAndPort;
 import su.nightexpress.nightcore.lib.redis.jedis.Jedis;
 import su.nightexpress.nightcore.lib.redis.jedis.JedisPool;
 import su.nightexpress.nightcore.lib.redis.jedis.JedisPubSub;
+import su.nightexpress.nightcore.lib.redis.jedis.params.SetParams;
 import su.nightexpress.nightcore.lib.commons.pool2.impl.GenericObjectPoolConfig;
 import su.nightexpress.excellentcrates.CratesPlugin;
 import su.nightexpress.excellentcrates.Placeholders;
@@ -28,6 +29,7 @@ import su.nightexpress.excellentcrates.key.CrateKey;
 import java.lang.reflect.Type;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -119,6 +121,102 @@ public class RedisSyncManager {
     @NotNull
     public String getNodeId() {
         return this.nodeId;
+    }
+
+    @NotNull
+    public CrateCooldownReservation reserveCrateCooldown(@NotNull UUID playerId, @NotNull String crateId, long cooldownSeconds) {
+        if (!this.canUseCrossServerCooldown(crateId, cooldownSeconds)) {
+            return CrateCooldownReservation.unavailable();
+        }
+
+        long ttlMillis = Math.max(1L, cooldownSeconds) * 1000L;
+        long expiresAt = System.currentTimeMillis() + ttlMillis;
+        String key = this.getCrateCooldownKey(playerId, crateId);
+
+        try (Jedis jedis = this.pool.getResource()) {
+            String result = jedis.set(key, String.valueOf(expiresAt), SetParams.setParams().nx().px(ttlMillis));
+            if ("OK".equalsIgnoreCase(result)) {
+                return CrateCooldownReservation.allowed(expiresAt);
+            }
+
+            long remaining = jedis.pttl(key);
+            long cooldownUntil = remaining > 0L ? System.currentTimeMillis() + remaining : this.parseCooldownUntil(jedis.get(key));
+            return CrateCooldownReservation.denied(cooldownUntil);
+        }
+        catch (Exception e) {
+            this.plugin.warn("Redis crate cooldown reservation failed for '" + crateId + "': " + e.getMessage());
+            return CrateCooldownReservation.unavailable();
+        }
+    }
+
+    public void refreshCrateCooldown(@NotNull UUID playerId, @NotNull String crateId, long cooldownSeconds) {
+        if (!this.canUseCrossServerCooldown(crateId, cooldownSeconds)) {
+            return;
+        }
+
+        long ttlMillis = Math.max(1L, cooldownSeconds) * 1000L;
+        long expiresAt = System.currentTimeMillis() + ttlMillis;
+        String key = this.getCrateCooldownKey(playerId, crateId);
+
+        try (Jedis jedis = this.pool.getResource()) {
+            jedis.set(key, String.valueOf(expiresAt), SetParams.setParams().px(ttlMillis));
+        }
+        catch (Exception e) {
+            this.plugin.warn("Redis crate cooldown refresh failed for '" + crateId + "': " + e.getMessage());
+        }
+    }
+
+    public void releaseCrateCooldown(@NotNull UUID playerId, @NotNull String crateId) {
+        if (!isActive() || !Config.isCrossServerCooldownCrate(crateId)) {
+            return;
+        }
+
+        try (Jedis jedis = this.pool.getResource()) {
+            jedis.del(this.getCrateCooldownKey(playerId, crateId));
+        }
+        catch (Exception e) {
+            this.plugin.warn("Redis crate cooldown release failed for '" + crateId + "': " + e.getMessage());
+        }
+    }
+
+    private boolean canUseCrossServerCooldown(@NotNull String crateId, long cooldownSeconds) {
+        return isActive() && cooldownSeconds > 0L && Config.isCrossServerCooldownCrate(crateId);
+    }
+
+    @NotNull
+    private String getCrateCooldownKey(@NotNull UUID playerId, @NotNull String crateId) {
+        return Config.CRATE_CROSS_SERVER_COOLDOWN_REDIS_PREFIX.get() + ":" + crateId.toLowerCase(Locale.ROOT) + ":" + playerId;
+    }
+
+    private long parseCooldownUntil(String value) {
+        if (value == null || value.isBlank()) {
+            return System.currentTimeMillis();
+        }
+
+        try {
+            return Long.parseLong(value);
+        }
+        catch (NumberFormatException ignored) {
+            return System.currentTimeMillis();
+        }
+    }
+
+    public record CrateCooldownReservation(boolean available, boolean allowed, long cooldownUntil) {
+
+        @NotNull
+        public static CrateCooldownReservation unavailable() {
+            return new CrateCooldownReservation(false, false, 0L);
+        }
+
+        @NotNull
+        public static CrateCooldownReservation allowed(long cooldownUntil) {
+            return new CrateCooldownReservation(true, true, cooldownUntil);
+        }
+
+        @NotNull
+        public static CrateCooldownReservation denied(long cooldownUntil) {
+            return new CrateCooldownReservation(true, false, cooldownUntil);
+        }
     }
 
     /* =========================

@@ -42,7 +42,6 @@ public class OpeningManager extends AbstractManager<CratesPlugin> {
 
         this.addListener(new OpeningListener(this.plugin, this));
 
-        this.startAsyncOpeningTicker();
         this.plugin.getFoliaScheduler().runTimer(this::tickOpenings, 0L, 1L);
     }
 
@@ -152,51 +151,22 @@ public class OpeningManager extends AbstractManager<CratesPlugin> {
         return this.openingByPlayerMap.get(player.getUniqueId());
     }
 
-    private void startAsyncOpeningTicker() {
-        this.plugin.getFoliaScheduler().runTimerAsync(() -> {
-            if (this.openingByPlayerMap.isEmpty()) return;
-            this.processOpeningsAsync();
-        }, 0L, 1L);
-    }
-
-    private void processOpeningsAsync() {
-        Set<Opening> openings = new HashSet<>(this.openingByPlayerMap.values());
-
-        for (Opening opening : openings) {
-            if (!opening.isRunning()) continue;
-
-            if (!(opening instanceof AsyncProcessable asyncOpening)) continue;
-
-            try {
-                this.processOpeningAsync(opening, asyncOpening);
-            } catch (Exception e) {
-                this.plugin.error("Error processing opening for player " + opening.getPlayer().getName() + ": " + e.getMessage());
-                e.printStackTrace();
-                this.plugin.getFoliaScheduler().runAtEntity(opening.getPlayer(), () -> {
-                    this.stopOpening(opening.getPlayer());
-                });
-            }
-        }
-    }
-
-    private void processOpeningAsync(Opening opening, AsyncProcessable asyncOpening) {
-        AsyncOpeningUpdate update = asyncOpening.processAsync();
-
-        if (update != null && update.hasUpdates()) {
-            this.plugin.getFoliaScheduler().runAtEntity(opening.getPlayer(), () -> {
-                try {
-                    update.applyToMainThread();
-                } catch (Exception e) {
-                    this.plugin.error("Error applying opening update for player " + opening.getPlayer().getName() + ": " + e.getMessage());
-                    e.printStackTrace();
-                }
-            });
-        }
-    }
-
     public void tickOpenings() {
         List<Opening> openingsCopy = new ArrayList<>(this.getOpenings());
-        openingsCopy.forEach(Opening::tick);
+        openingsCopy.forEach(opening -> {
+            Player player = opening.getPlayer();
+            if (!player.isOnline()) {
+                this.removeOpening(player);
+                return;
+            }
+
+            this.plugin.getFoliaScheduler().runAtEntity(player, () -> {
+                if (!player.isOnline()) return;
+                if (this.getOpening(player) != opening) return;
+
+                opening.tick();
+            });
+        });
     }
 
     public boolean isOpening(@NotNull Player player) {

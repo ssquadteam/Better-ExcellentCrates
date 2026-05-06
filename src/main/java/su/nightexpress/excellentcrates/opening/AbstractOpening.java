@@ -1,5 +1,6 @@
 package su.nightexpress.excellentcrates.opening;
 
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -20,9 +21,14 @@ import su.nightexpress.nightcore.util.Players;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 public abstract class AbstractOpening implements Opening {
+
+    private static final String DAILY_CRATE_ID       = "daily";
+    private static final String DAILY_CRATE_HOLOGRAM = "Crate-Vote";
+
+    private static volatile boolean fancyHologramRefreshWarned;
 
     protected final CratesPlugin plugin;
     protected final Player       player;
@@ -150,9 +156,48 @@ public abstract class AbstractOpening implements Opening {
 
                     this.plugin.getUserManager().save(user);
                     this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
+                    this.refreshDailyCrateHologram();
                 });
             });
         }
+    }
+
+    private void refreshDailyCrateHologram() {
+        if (!this.crate.getId().equalsIgnoreCase(DAILY_CRATE_ID)) return;
+        if (!Bukkit.getPluginManager().isPluginEnabled("FancyHolograms")) return;
+
+        this.plugin.getFoliaScheduler().runAtEntity(this.player, () -> {
+            try {
+                Class<?> apiClass = Class.forName("de.oliver.fancyholograms.api.FancyHologramsPlugin");
+                Class<?> managerClass = Class.forName("de.oliver.fancyholograms.api.HologramManager");
+                Class<?> hologramClass = Class.forName("de.oliver.fancyholograms.api.hologram.Hologram");
+                Object api = apiClass.getMethod("get").invoke(null);
+                if (api == null) return;
+
+                Object manager = apiClass.getMethod("getHologramManager").invoke(api);
+                if (manager == null) return;
+
+                Object result = managerClass.getMethod("getHologram", String.class).invoke(manager, DAILY_CRATE_HOLOGRAM);
+                if (!(result instanceof Optional<?> optional)) return;
+
+                optional.ifPresent(hologram -> {
+                    try {
+                        hologramClass.getMethod("refreshHologram", Player.class).invoke(hologram, this.player);
+                    } catch (ReflectiveOperationException exception) {
+                        this.warnFancyHologramRefresh(exception);
+                    }
+                });
+            } catch (ReflectiveOperationException | LinkageError exception) {
+                this.warnFancyHologramRefresh(exception);
+            }
+        });
+    }
+
+    private void warnFancyHologramRefresh(@NotNull Throwable throwable) {
+        if (fancyHologramRefreshWarned) return;
+
+        fancyHologramRefreshWarned = true;
+        this.plugin.warn("Failed to refresh FancyHolograms daily crate hologram after claim: " + throwable.getMessage());
     }
 
     private void releaseCrossServerCooldown() {

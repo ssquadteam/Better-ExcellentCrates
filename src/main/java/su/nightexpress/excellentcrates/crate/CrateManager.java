@@ -609,20 +609,24 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
             }
         }
 
-        plugin.getFoliaScheduler().runAtEntity(player, (player::closeInventory));
+        player.getScheduler().run(this.plugin, task -> {
+            if (!player.isOnline()) return;
+            if (!this.plugin.getOpeningManager().isOpeningAvailable(player)) return;
 
-        Opening opening = this.plugin.getOpeningManager().createOpening(player, source, realCost);
+            player.closeInventory();
 
-        this.plugin.getOpeningManager().startOpening(player, opening, options.has(OpenOptions.Option.IGNORE_ANIMATION));
+            Opening opening = this.plugin.getOpeningManager().createOpening(player, source, realCost);
+            this.plugin.getOpeningManager().startOpening(player, opening, options.has(OpenOptions.Option.IGNORE_ANIMATION));
 
-        if (realCost != null) {
-            realCost.takeAll(player);
-        }
+            if (realCost != null) {
+                realCost.takeAll(player);
+            }
 
-        ItemStack item = source.getItem();
-        if (item != null) {
-            item.setAmount(item.getAmount() - 1);
-        }
+            ItemStack item = source.getItem();
+            if (item != null) {
+                item.setAmount(item.getAmount() - 1);
+            }
+        }, null);
 
         return true;
     }

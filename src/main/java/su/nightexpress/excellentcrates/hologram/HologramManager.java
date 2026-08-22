@@ -94,14 +94,7 @@ public class HologramManager extends AbstractManager<CratesPlugin> {
         AsyncHologramUpdate update = this.asyncProcessor.processHologramAsync(crate, display);
 
         if (update.hasUpdates()) {
-            this.plugin.getFoliaScheduler().runNextTick(() -> {
-                try {
-                    update.applyToMainThread(this.handler);
-                } catch (Exception e) {
-                    this.plugin.error("Error applying hologram update for crate " + crate.getId() + ": " + e.getMessage());
-                    e.printStackTrace();
-                }
-            });
+            update.applyToMainThread(this.handler, this.plugin);
         }
     }
 

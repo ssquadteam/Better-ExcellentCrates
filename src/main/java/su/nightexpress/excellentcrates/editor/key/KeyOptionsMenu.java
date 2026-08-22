@@ -27,6 +27,7 @@ import su.nightexpress.nightcore.ui.menu.type.LinkedMenu;
 import su.nightexpress.nightcore.util.Players;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
 import su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import java.util.stream.IntStream;
 
@@ -71,7 +72,7 @@ public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> implement
         this.plugin.injectLang(this);
 
         this.addItem(MenuItem.buildReturn(this, 40, (viewer, event) -> {
-            this.runNextTick(() -> plugin.getEditorManager().openKeyList(viewer.getPlayer()));
+            FoliaTasks.runAtPlayer(plugin, viewer.getPlayer(), () -> plugin.getEditorManager().openKeyList(viewer.getPlayer()));
         }));
 
         this.addItem(MenuItem.background(Material.BLACK_STAINED_GLASS_PANE, IntStream.range(36, 45).toArray()));
@@ -103,7 +104,7 @@ public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> implement
                         if (event.isLeftClick()) {
                             key.setItemStackable(!key.isItemStackable());
                             key.markDirty();
-                            this.runNextTick(flush);
+                            FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), flush);
                         }
                         return;
                     }
@@ -123,7 +124,7 @@ public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> implement
             .toMenuItem().setSlots(15).setHandler((viewer1, event) -> {
                 key.setVirtual(!key.isVirtual());
                 key.markDirty();
-                this.runNextTick(flush);
+                FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), flush);
             }).build()
         );
 
@@ -132,7 +133,7 @@ public class KeyOptionsMenu extends LinkedMenu<CratesPlugin, CrateKey> implement
                 if (event.getClick() != ClickType.DROP) return;
 
                 this.plugin.getKeyManager().delete(key);
-                this.runNextTick(() -> this.plugin.getEditorManager().openKeyList(player));
+                FoliaTasks.runAtPlayer(this.plugin, player, () -> this.plugin.getEditorManager().openKeyList(player));
             }).build()
         );
     }

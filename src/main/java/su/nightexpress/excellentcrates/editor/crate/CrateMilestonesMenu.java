@@ -22,6 +22,7 @@ import su.nightexpress.nightcore.ui.menu.data.MenuFiller;
 import su.nightexpress.nightcore.ui.menu.item.MenuItem;
 import su.nightexpress.nightcore.ui.menu.type.LinkedMenu;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import java.util.Comparator;
 import java.util.stream.IntStream;
@@ -51,7 +52,7 @@ public class CrateMilestonesMenu extends LinkedMenu<CratesPlugin, Crate> impleme
         this.plugin.injectLang(this);
 
         this.addItem(MenuItem.buildReturn(this, 39, (viewer, event) -> {
-            this.runNextTick(() -> this.plugin.getEditorManager().openOptionsMenu(viewer.getPlayer(), this.getLink(viewer)));
+            FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.plugin.getEditorManager().openOptionsMenu(viewer.getPlayer(), this.getLink(viewer)));
         }));
 
         this.addItem(MenuItem.buildNextPage(this, 44));
@@ -61,7 +62,7 @@ public class CrateMilestonesMenu extends LinkedMenu<CratesPlugin, Crate> impleme
             Milestone milestone = new Milestone(crate, "null", 0);
             crate.getMilestones().add(milestone);
             crate.markDirty();
-            this.runNextTick(() -> this.flush(viewer));
+            FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.flush(viewer));
         });
     }
 
@@ -89,7 +90,7 @@ public class CrateMilestonesMenu extends LinkedMenu<CratesPlugin, Crate> impleme
                 if (event.isRightClick()) {
                     crate.getMilestones().remove(milestone);
                     crate.markDirty();
-                    this.runNextTick(() -> this.flush(viewer));
+                    FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.flush(viewer));
                     return;
                 }
             }

@@ -126,7 +126,9 @@ public abstract class AbstractOpening implements Opening {
             this.plugin.getUserManager().getOrFetchAsync(this.player.getUniqueId()).thenAccept(user -> {
                 if (user == null) return;
 
-                this.plugin.getFoliaScheduler().runNextTick(() -> {
+                this.plugin.getFoliaScheduler().runAtEntity(this.player, () -> {
+                    if (!this.player.isOnline()) return;
+
                     UserCrateData userData = user.getCrateData(this.crate);
                     GlobalCrateData globalData = this.plugin.getDataManager().getCrateDataOrCreate(this.crate);
 

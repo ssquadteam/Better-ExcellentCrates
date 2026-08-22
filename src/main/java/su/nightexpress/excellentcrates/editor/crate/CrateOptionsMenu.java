@@ -31,6 +31,7 @@ import su.nightexpress.nightcore.util.StringUtil;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
 import su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers;
 import su.nightexpress.nightcore.util.time.TimeFormats;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import java.util.stream.IntStream;
 
@@ -91,7 +92,7 @@ public class CrateOptionsMenu extends LinkedMenu<CratesPlugin, Crate> implements
 
     private static final IconLocale LOCALE_LINKED_BLOCKS = LangEntry.iconBuilder("Editor.Button.Crate.LinkedBlocks")
         .name("Linked Block")
-        .rawLore(DARK_GRAY.wrap("Press " + GOLD.wrap("[" + TagWrappers.KEY.apply("key.drop") + "]") + " to unlink.")).br()
+        .rawLore(DARK_GRAY.wrap("Press " + GOLD.wrap("[") + TagWrappers.KEY.apply("key.drop") + "]") + " to unlink.")).br()
         .appendCurrent("Linked", GENERIC_STATE).br()
         .appendInfo("Link the crate to a block by", "using the link tool.").br()
         .appendInfo("Interacting with the linked block", "will preview and open the crate.").br()
@@ -169,7 +170,7 @@ public class CrateOptionsMenu extends LinkedMenu<CratesPlugin, Crate> implements
         this.plugin.injectLang(this);
 
         this.addItem(MenuItem.buildReturn(this, 49, (viewer, event) -> {
-            this.runNextTick(() -> this.plugin.getEditorManager().openCrateList(viewer.getPlayer()));
+            FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.plugin.getEditorManager().openCrateList(viewer.getPlayer()));
         }));
 
         this.addItem(MenuItem.background(Material.BLACK_STAINED_GLASS_PANE, IntStream.range(45, 54).toArray()));
@@ -210,7 +211,7 @@ public class CrateOptionsMenu extends LinkedMenu<CratesPlugin, Crate> implements
                     if (event.isLeftClick()) {
                         crate.setItemStackable(!crate.isItemStackable());
                         crate.markDirty();
-                        this.runNextTick(flush);
+                        FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), flush);
                     }
                     return;
                 }
@@ -253,12 +254,12 @@ public class CrateOptionsMenu extends LinkedMenu<CratesPlugin, Crate> implements
                     crate.removeHologram();
                     crate.clearBlockPositions();
                     crate.markDirty();
-                    this.runNextTick(flush);
+                    FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), flush);
                     return;
                 }
 
                 this.plugin.getCrateManager().giveLinkTool(player, crate);
-                this.runNextTick(player::closeInventory);
+                FoliaTasks.runAtPlayer(this.plugin, player, player::closeInventory);
             }).build()
         );
 
@@ -268,14 +269,14 @@ public class CrateOptionsMenu extends LinkedMenu<CratesPlugin, Crate> implements
             .toMenuItem().setSlots(16).setHandler((viewer1, event) -> {
                 crate.setPushbackEnabled(!crate.isPushbackEnabled());
                 crate.markDirty();
-                this.runNextTick(flush);
+                FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), flush);
             }).build()
         );
 
         viewer.addItem(NightItem.fromType(Material.TRIAL_KEY)
             .localized(LOCALE_COST_OPTIONS)
             .toMenuItem().setSlots(28).setHandler((viewer1, event) -> {
-                this.runNextTick(() -> plugin.getEditorManager().openCosts(viewer.getPlayer(), crate));
+                FoliaTasks.runAtPlayer(plugin, viewer.getPlayer(), () -> plugin.getEditorManager().openCosts(viewer.getPlayer(), crate));
             }).build()
         );
 
@@ -288,7 +289,7 @@ public class CrateOptionsMenu extends LinkedMenu<CratesPlugin, Crate> implements
             .toMenuItem().setSlots(29).setHandler((viewer1, event) -> {
                 crate.setPermissionRequired(!crate.isPermissionRequired());
                 crate.markDirty();
-                this.runNextTick(flush);
+                FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), flush);
             }).build()
         );
 
@@ -339,7 +340,7 @@ public class CrateOptionsMenu extends LinkedMenu<CratesPlugin, Crate> implements
                 .replace(GENERIC_AMOUNT, () -> CoreLang.formatEntry(String.valueOf(crate.countRewards()), crate.countRewards() > 0))
             )
             .toMenuItem().setSlots(33).setHandler((viewer1, event) -> {
-                this.runNextTick(() -> this.plugin.getEditorManager().openRewardList(viewer.getPlayer(), crate));
+                FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.plugin.getEditorManager().openRewardList(viewer.getPlayer(), crate));
             }).build()
         );
 
@@ -351,7 +352,7 @@ public class CrateOptionsMenu extends LinkedMenu<CratesPlugin, Crate> implements
                 )
                 .toMenuItem().setSlots(34).setHandler((viewer1, event) -> {
                     // TODO crate.setMilestonesRepeatable(!crate.isMilestonesRepeatable());
-                    this.runNextTick(() -> this.plugin.getEditorManager().openMilestones(viewer.getPlayer(), crate));
+                    FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.plugin.getEditorManager().openMilestones(viewer.getPlayer(), crate));
                 }).build()
             );
         }
@@ -362,7 +363,7 @@ public class CrateOptionsMenu extends LinkedMenu<CratesPlugin, Crate> implements
                 if (event.getClick() != ClickType.DROP) return;
 
                 this.plugin.getCrateManager().delete(crate);
-                this.runNextTick(() -> this.plugin.getEditorManager().openCrateList(player));
+                FoliaTasks.runAtPlayer(this.plugin, player, () -> this.plugin.getEditorManager().openCrateList(player));
             }).build()
         );
 

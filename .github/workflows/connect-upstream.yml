@@ -37,7 +37,11 @@ jobs:
 
           git remote add upstream https://github.com/nulli0n/ExcellentCrates-spigot.git
           git fetch upstream master
-          git merge -X ours --no-ff --no-edit upstream/master
+          if ! git merge -X ours --no-ff --no-edit upstream/master; then
+            git rm -f --ignore-unmatch pom.xml
+            git add -A
+            git commit --no-edit -m "Merge upstream ExcellentCrates-spigot master (v6.6.1)."
+          fi
 
           git rm -f .github/workflows/connect-upstream.yml
           git commit -m "Remove temporary upstream-connect workflow."

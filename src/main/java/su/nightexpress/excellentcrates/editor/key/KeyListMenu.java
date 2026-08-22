@@ -22,6 +22,7 @@ import su.nightexpress.nightcore.ui.menu.data.MenuFiller;
 import su.nightexpress.nightcore.ui.menu.item.MenuItem;
 import su.nightexpress.nightcore.ui.menu.type.LinkedMenu;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import java.util.Comparator;
 import java.util.stream.IntStream;
@@ -55,7 +56,7 @@ public class KeyListMenu extends LinkedMenu<CratesPlugin, KeyManager> implements
         this.plugin.injectLang(this);
 
         this.addItem(MenuItem.buildReturn(this, 40, (viewer, event) -> {
-            this.runNextTick(() -> this.plugin.getEditorManager().openEditor(viewer.getPlayer()));
+            FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.plugin.getEditorManager().openEditor(viewer.getPlayer()));
         }));
         this.addItem(MenuItem.buildNextPage(this, 44));
         this.addItem(MenuItem.buildPreviousPage(this, 36));
@@ -86,7 +87,7 @@ public class KeyListMenu extends LinkedMenu<CratesPlugin, KeyManager> implements
                 );
         });
         autoFill.setItemClick(key -> (viewer1, event) -> {
-            this.runNextTick(() -> plugin.getEditorManager().openKeyOptions(viewer1.getPlayer(), key));
+            FoliaTasks.runAtPlayer(plugin, viewer1.getPlayer(), () -> plugin.getEditorManager().openKeyOptions(viewer1.getPlayer(), key));
         });
 
         return autoFill.build();

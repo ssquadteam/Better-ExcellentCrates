@@ -20,6 +20,7 @@ import su.nightexpress.nightcore.menu.item.MenuItem;
 import su.nightexpress.nightcore.util.ItemReplacer;
 import su.nightexpress.nightcore.util.Lists;
 import su.nightexpress.nightcore.util.NumberUtil;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,7 +73,7 @@ public class CratesMenu extends ConfigMenu<CratesPlugin> {
                 InteractType clickAction = null;//Config.getCrateClickAction(clickType);
                 if (clickAction == null) return;
 
-                this.runNextTick(() -> {
+                FoliaTasks.runAtPlayer(plugin, player, () -> {
                     player.closeInventory();
                     plugin.getCrateManager().interactCrate(player, crate, clickAction, null, null);
                 });

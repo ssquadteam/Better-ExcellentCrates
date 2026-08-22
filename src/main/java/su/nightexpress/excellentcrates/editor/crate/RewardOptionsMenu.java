@@ -31,6 +31,7 @@ import su.nightexpress.nightcore.ui.menu.type.LinkedMenu;
 import su.nightexpress.nightcore.util.Players;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
 import su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import java.util.stream.IntStream;
 
@@ -121,7 +122,7 @@ public class RewardOptionsMenu extends LinkedMenu<CratesPlugin, Reward> implemen
         this.plugin.injectLang(this);
 
         this.addItem(MenuItem.buildReturn(this, 49, (viewer, event) -> {
-            this.runNextTick(() -> plugin.getEditorManager().openRewardList(viewer.getPlayer(), this.getLink(viewer).getCrate()));
+            FoliaTasks.runAtPlayer(plugin, viewer.getPlayer(), () -> plugin.getEditorManager().openRewardList(viewer.getPlayer(), this.getLink(viewer).getCrate()));
         }));
 
         this.addItem(MenuItem.background(Material.GLASS_PANE, 19,20,21,22,23,24,25));
@@ -147,7 +148,7 @@ public class RewardOptionsMenu extends LinkedMenu<CratesPlugin, Reward> implemen
                     if (reward instanceof ItemReward itemReward) {
                         itemReward.setCustomPreview(!itemReward.isCustomPreview());
                         crate.markDirty();
-                        this.runNextTick(flush);
+                        FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), flush);
                     }
                     return;
                 }
@@ -159,7 +160,7 @@ public class RewardOptionsMenu extends LinkedMenu<CratesPlugin, Reward> implemen
                 if (!ItemHelper.isCustom(copy)) {
                     reward.setPreview(ItemHelper.vanilla(copy));
                     crate.markDirty();
-                    this.runNextTick(flush);
+                    FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), flush);
                 }
                 else {
                     this.dialogs.show(player, RewardDialogs.PREVIEW, new RewardPreviewDialog.Data(reward, copy), flush);
@@ -176,7 +177,7 @@ public class RewardOptionsMenu extends LinkedMenu<CratesPlugin, Reward> implemen
                     .replace(GENERIC_AMOUNT, () -> itemReward.hasContent() ? CoreLang.goodEntry(String.valueOf(itemReward.countItems())) : CoreLang.badEntry(Lang.INSPECTIONS_REWARD_NO_ITEMS.text()))
                 )
                 .toMenuItem().setSlots(10).setHandler((viewer1, event) -> {
-                    this.runNextTick(() -> plugin.getEditorManager().openRewardContent(viewer.getPlayer(), itemReward));
+                    FoliaTasks.runAtPlayer(plugin, viewer.getPlayer(), () -> plugin.getEditorManager().openRewardContent(viewer.getPlayer(), itemReward));
                 }).build()
             );
         }
@@ -220,7 +221,7 @@ public class RewardOptionsMenu extends LinkedMenu<CratesPlugin, Reward> implemen
             .toMenuItem().setSlots(13).setHandler((viewer1, event) -> {
                 reward.setBroadcast(!reward.isBroadcast());
                 crate.markDirty();
-                this.runNextTick(flush);
+                FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), flush);
             }).build()
         );
 
@@ -244,7 +245,7 @@ public class RewardOptionsMenu extends LinkedMenu<CratesPlugin, Reward> implemen
 
                 crate.removeReward(reward);
                 crate.markDirty();
-                this.runNextTick(() -> this.plugin.getEditorManager().openRewardList(player, crate));
+                FoliaTasks.runAtPlayer(this.plugin, player, () -> this.plugin.getEditorManager().openRewardList(player, crate));
             }).build()
         );
     }

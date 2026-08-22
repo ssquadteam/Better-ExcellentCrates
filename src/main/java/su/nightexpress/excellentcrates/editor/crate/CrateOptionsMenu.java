@@ -92,7 +92,7 @@ public class CrateOptionsMenu extends LinkedMenu<CratesPlugin, Crate> implements
 
     private static final IconLocale LOCALE_LINKED_BLOCKS = LangEntry.iconBuilder("Editor.Button.Crate.LinkedBlocks")
         .name("Linked Block")
-        .rawLore(DARK_GRAY.wrap("Press " + GOLD.wrap("[") + TagWrappers.KEY.apply("key.drop") + "]") + " to unlink.")).br()
+        .rawLore(DARK_GRAY.wrap("Press " + GOLD.wrap("[" + TagWrappers.KEY.apply("key.drop") + "]") + " to unlink.")).br()
         .appendCurrent("Linked", GENERIC_STATE).br()
         .appendInfo("Link the crate to a block by", "using the link tool.").br()
         .appendInfo("Interacting with the linked block", "will preview and open the crate.").br()

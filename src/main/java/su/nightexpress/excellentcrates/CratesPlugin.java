@@ -124,6 +124,8 @@ public class CratesPlugin extends NightPlugin {
             PlaceholderHook.setup(this);
         }
 
+
+
         this.loadCommands();
         this.proceedAddons(CratesAddon::onLoad);
     }

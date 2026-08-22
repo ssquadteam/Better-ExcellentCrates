@@ -93,6 +93,19 @@ public class PlaceholderHook {
                 return String.valueOf(Math.max(0, openLimit - openStreak));
             });
 
+            this.userPlaceholders.put("openings_remaining", (player, crate) -> {
+                if (player == null) return null;
+                if (!crate.isOpeningCooldownEnabled()) return CoreLang.OTHER_INFINITY.text();
+
+                CrateUser user = plugin.getUserManager().getOrFetch(player);
+                UserCrateData data = user.getCrateData(crate);
+
+                int openLimit = crate.getOpeningLimitAmount();
+                int openStreak = data.queryOpeningStreak();
+
+                return String.valueOf(Math.max(0, openLimit - openStreak));
+            });
+
             this.userPlaceholders.put("openings", (player, crate) -> {
                 if (player == null) return null;
 

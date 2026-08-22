@@ -14,6 +14,7 @@ import su.nightexpress.nightcore.ui.menu.MenuViewer;
 import su.nightexpress.nightcore.ui.menu.item.MenuItem;
 import su.nightexpress.nightcore.ui.menu.type.NormalMenu;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import static su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers.*;
 import static su.nightexpress.excellentcrates.Placeholders.*;
@@ -49,7 +50,7 @@ public class EditorMenu extends NormalMenu<CratesPlugin> implements LangContaine
             .toMenuItem()
             .setSlots(11)
             .setHandler((viewer1, event) -> {
-                this.runNextTick(() -> plugin.getEditorManager().openCrateList(viewer.getPlayer()));
+                FoliaTasks.runAtPlayer(plugin, viewer.getPlayer(), () -> plugin.getEditorManager().openCrateList(viewer.getPlayer()));
             })
             .build()
         );
@@ -60,7 +61,7 @@ public class EditorMenu extends NormalMenu<CratesPlugin> implements LangContaine
             .toMenuItem()
             .setSlots(15)
             .setHandler((viewer1, event) -> {
-                this.runNextTick(() -> plugin.getEditorManager().openKeyList(viewer.getPlayer()));
+                FoliaTasks.runAtPlayer(plugin, viewer.getPlayer(), () -> plugin.getEditorManager().openKeyList(viewer.getPlayer()));
             })
             .build()
         );

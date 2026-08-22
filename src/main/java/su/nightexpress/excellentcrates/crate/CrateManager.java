@@ -434,7 +434,9 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
         World world = location.getWorld();
         if (world == null) return false;
 
-        world.dropItemNaturally(location, crate.getItemStack());
+        this.plugin.getFoliaScheduler().runAtLocation(location, () ->
+            world.dropItemNaturally(location, crate.getItemStack())
+        );
         return true;
     }
 
@@ -810,14 +812,21 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
             if (effect.isDummy()) return;
 
             UniParticle particle = crate.getEffectParticle();
+            int distance = Config.CRATE_EFFECTS_VISIBILITY_DISTANCE.get();
 
             crate.getBlockPositions().forEach(worldPos -> {
-                if (!worldPos.isChunkLoaded()) return;
-
                 Location location = worldPos.toLocation();
                 if (location == null) return;
 
-                CrateUtils.getPlayersForEffects(location).forEach(player -> effect.playStep(location, particle, player));
+                this.plugin.runAtLocation(location, () -> {
+                    if (!worldPos.isChunkLoaded()) return;
+
+                    location.getNearbyPlayers(distance).forEach(player ->
+                        this.plugin.getFoliaScheduler().runAtEntity(player, () ->
+                            effect.playStep(location.clone(), particle, player)
+                        )
+                    );
+                });
             });
         });
 

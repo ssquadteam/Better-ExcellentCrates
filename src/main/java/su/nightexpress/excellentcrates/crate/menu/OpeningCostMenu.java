@@ -23,6 +23,7 @@ import su.nightexpress.nightcore.ui.menu.data.MenuLoader;
 import su.nightexpress.nightcore.ui.menu.type.LinkedMenu;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
 import su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import java.util.HashMap;
 import java.util.List;
@@ -78,7 +79,7 @@ public class OpeningCostMenu extends LinkedMenu<CratesPlugin, CrateSource> imple
                 .toMenuItem()
                 .setPriority(Integer.MAX_VALUE)
                 .setSlots(slot)
-                    .setHandler((viewer1, event) -> this.runNextTick(() -> {
+                    .setHandler((viewer1, event) -> FoliaTasks.runAtPlayer(plugin, player, () -> {
                         if (maxOpenings > 1 && Config.isMassOpenEnabled()) {
                             this.manager.openAmountMenu(player, source, cost);
                             return;

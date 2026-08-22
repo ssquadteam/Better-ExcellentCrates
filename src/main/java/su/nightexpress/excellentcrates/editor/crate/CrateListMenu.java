@@ -21,6 +21,7 @@ import su.nightexpress.nightcore.ui.menu.data.MenuFiller;
 import su.nightexpress.nightcore.ui.menu.item.MenuItem;
 import su.nightexpress.nightcore.ui.menu.type.LinkedMenu;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import java.util.Comparator;
 import java.util.stream.IntStream;
@@ -52,7 +53,7 @@ public class CrateListMenu extends LinkedMenu<CratesPlugin, CrateManager> implem
         this.plugin.injectLang(this);
 
         this.addItem(MenuItem.buildReturn(this, 40, (viewer, event) -> {
-            this.runNextTick(() -> this.plugin.getEditorManager().openEditor(viewer.getPlayer()));
+            FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.plugin.getEditorManager().openEditor(viewer.getPlayer()));
         }));
 
         this.addItem(MenuItem.buildNextPage(this, 44));
@@ -82,7 +83,7 @@ public class CrateListMenu extends LinkedMenu<CratesPlugin, CrateManager> implem
                 );
         });
         autoFill.setItemClick(crate -> (viewer1, event) -> {
-            this.runNextTick(() -> this.plugin.getEditorManager().openOptionsMenu(viewer1.getPlayer(), crate));
+            FoliaTasks.runAtPlayer(this.plugin, viewer1.getPlayer(), () -> this.plugin.getEditorManager().openOptionsMenu(viewer1.getPlayer(), crate));
         });
 
         return autoFill.build();

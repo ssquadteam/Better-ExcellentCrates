@@ -22,6 +22,7 @@ import su.nightexpress.nightcore.ui.menu.data.ConfigBased;
 import su.nightexpress.nightcore.ui.menu.data.MenuLoader;
 import su.nightexpress.nightcore.ui.menu.type.LinkedMenu;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import static su.nightexpress.excellentcrates.Placeholders.CRATE_NAME;
 import static su.nightexpress.excellentcrates.Placeholders.GENERIC_MAX;
@@ -79,7 +80,7 @@ public class OpeningAmountMenu extends LinkedMenu<CratesPlugin, OpeningAmountMen
                 .toMenuItem()
                 .setSlots(slots[index])
                 .setPriority(Integer.MAX_VALUE)
-                    .setHandler((viewer1, event) -> this.runNextTick(() -> {
+                    .setHandler((viewer1, event) -> FoliaTasks.runAtPlayer(this.plugin, player, () -> {
                         this.plugin.getFoliaScheduler().runAtEntity(player, player::closeInventory);
                         this.manager.multiOpenCrate(player, source, OpenOptions.empty(), cost, amount);
                     }))

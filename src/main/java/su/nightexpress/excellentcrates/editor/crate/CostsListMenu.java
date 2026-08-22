@@ -22,6 +22,7 @@ import su.nightexpress.nightcore.ui.menu.item.MenuItem;
 import su.nightexpress.nightcore.ui.menu.type.LinkedMenu;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
 import su.nightexpress.nightcore.util.text.night.wrapper.TagWrappers;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -85,7 +86,7 @@ public class CostsListMenu extends LinkedMenu<CratesPlugin, Crate> implements La
         this.plugin.injectLang(this);
 
         this.addItem(MenuItem.buildReturn(this, 49, (viewer, event) -> {
-            this.runNextTick(() -> this.plugin.getEditorManager().openOptionsMenu(viewer.getPlayer(), this.getLink(viewer)));
+            FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.plugin.getEditorManager().openOptionsMenu(viewer.getPlayer(), this.getLink(viewer)));
         }));
 
         this.addItem(NightItem.fromType(Material.BLACK_STAINED_GLASS_PANE)
@@ -129,7 +130,7 @@ public class CostsListMenu extends LinkedMenu<CratesPlugin, Crate> implements La
                     .setHandler((viewer1, event) -> {
                         cost.setEnabled(!cost.isEnabled());
                         crate.markDirty();
-                        this.runNextTick(() -> this.flush(viewer));
+                        FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.flush(viewer));
                     });
 
                 entryBuilder = NightItem.fromItemStack(cost.getIconStack())
@@ -146,11 +147,11 @@ public class CostsListMenu extends LinkedMenu<CratesPlugin, Crate> implements La
                         if (event.getClick() == ClickType.DROP) {
                             crate.removeCost(cost);
                             crate.markDirty();
-                            this.runNextTick(() -> this.flush(viewer));
+                            FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.flush(viewer));
                             return;
                         }
 
-                        this.runNextTick(() -> plugin.getEditorManager().openCostOptions(player, crate, cost));
+                        FoliaTasks.runAtPlayer(plugin, player, () -> plugin.getEditorManager().openCostOptions(player, crate, cost));
                     });
 
                 statusBuilder = NightItem.fromType(!isValid ? Material.RED_STAINED_GLASS_PANE : (hasInvalids ? Material.YELLOW_STAINED_GLASS_PANE : Material.LIME_STAINED_GLASS_PANE))

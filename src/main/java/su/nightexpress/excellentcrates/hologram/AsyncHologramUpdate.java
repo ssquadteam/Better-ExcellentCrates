@@ -46,23 +46,29 @@ public class AsyncHologramUpdate {
                !viewersToAdd.isEmpty() || !viewersToRemove.isEmpty();
     }
     
-    public void applyToMainThread(@NotNull HologramHandler handler) {
+    public void applyToMainThread(@NotNull HologramHandler handler, @NotNull su.nightexpress.excellentcrates.CratesPlugin plugin) {
         for (Map.Entry<Player, Map<FakeEntity, HologramPacketData>> entry : packetsToSend.entrySet()) {
             Player player = entry.getKey();
             if (!player.isOnline()) continue;
-            
-            for (Map.Entry<FakeEntity, HologramPacketData> packetEntry : entry.getValue().entrySet()) {
-                FakeEntity entity = packetEntry.getKey();
-                HologramPacketData data = packetEntry.getValue();
-                handler.sendHologramPackets(player, entity, data.needSpawn(), data.text());
-            }
+
+            plugin.getFoliaScheduler().runAtEntity(player, () -> {
+                if (!player.isOnline()) return;
+                for (Map.Entry<FakeEntity, HologramPacketData> packetEntry : entry.getValue().entrySet()) {
+                    FakeEntity entity = packetEntry.getKey();
+                    HologramPacketData data = packetEntry.getValue();
+                    handler.sendHologramPackets(player, entity, data.needSpawn(), data.text());
+                }
+            });
         }
         
         for (Map.Entry<Player, Set<Integer>> entry : destroyPackets.entrySet()) {
             Player player = entry.getKey();
             if (!player.isOnline()) continue;
-            
-            handler.sendDestroyEntityPacket(player, entry.getValue());
+
+            plugin.getFoliaScheduler().runAtEntity(player, () -> {
+                if (!player.isOnline()) return;
+                handler.sendDestroyEntityPacket(player, entry.getValue());
+            });
         }
         
         for (Map.Entry<FakeEntityGroup, Set<Player>> entry : viewersToAdd.entrySet()) {

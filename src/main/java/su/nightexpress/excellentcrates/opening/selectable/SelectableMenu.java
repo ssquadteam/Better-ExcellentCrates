@@ -25,6 +25,7 @@ import su.nightexpress.nightcore.util.Lists;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
 import su.nightexpress.nightcore.util.placeholder.Replacer;
 import su.nightexpress.nightcore.util.sound.VanillaSound;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import java.util.Comparator;
 import java.util.List;
@@ -84,7 +85,7 @@ public class SelectableMenu extends LinkedMenu<CratesPlugin, SelectableOpening> 
                     opening.addSelectedReward(reward);
                     this.selectSound.play(player);
                 }
-                this.runNextTick(() -> this.flush(viewer));
+                FoliaTasks.runAtPlayer(this.plugin, viewer.getPlayer(), () -> this.flush(viewer));
             })
             .build();
     }

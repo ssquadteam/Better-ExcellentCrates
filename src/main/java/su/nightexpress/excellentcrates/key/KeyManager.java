@@ -137,7 +137,9 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
         World world = location.getWorld();
         if (world == null) return false;
 
-        world.dropItemNaturally(location, key.getItemStack());
+        this.plugin.getFoliaScheduler().runAtLocation(location, () ->
+            world.dropItemNaturally(location, key.getItemStack())
+        );
         return true;
     }
 

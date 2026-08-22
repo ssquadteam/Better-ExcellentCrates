@@ -129,9 +129,19 @@ public class SimpleRollOpening extends WorldOpening {
     protected void onStop() {
         this.addReward(this.reward);
 
-        if (this.rewardDisplay != null) {
-            this.rewardDisplay.remove();
-            this.rewardDisplay = null;
+        Item display = this.rewardDisplay;
+        Location displayLocation = this.displayLocation;
+        this.rewardDisplay = null;
+
+        if (display != null) {
+            this.plugin.getFoliaScheduler().runAtEntity(display, display::remove);
+        }
+        else if (displayLocation != null) {
+            this.plugin.runAtLocation(displayLocation, () -> {
+                if (this.rewardDisplay != null) {
+                    this.rewardDisplay.remove();
+                }
+            });
         }
 
         Block block = this.source.getBlock();
@@ -157,31 +167,36 @@ public class SimpleRollOpening extends WorldOpening {
     }
 
     private void displayReward() {
+        if (this.displayLocation == null) return;
+
         Reward reward = this.isSpinsCompleted() ? this.reward : this.crate.rollReward(this.player);
+        Location location = this.displayLocation;
 
-        if (this.rewardDisplay == null) {
-            this.rewardDisplay = player.getWorld().spawn(this.displayLocation, Item.class, item -> item.setVelocity(new Vector()));
-            this.rewardDisplay.setPersistent(false);
-            this.rewardDisplay.setCustomNameVisible(true);
-            this.rewardDisplay.setGravity(false);
-            this.rewardDisplay.setPickupDelay(Integer.MAX_VALUE);
-            this.rewardDisplay.setUnlimitedLifetime(true);
-            this.rewardDisplay.setInvulnerable(true);
-            //this.rewardDisplay.setBillboard(Display.Billboard.CENTER);
-            //this.rewardDisplay.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(0.35f, 0.35f, 0.35f), new AxisAngle4f()));
-        }
-        if (this.rewardDisplay != null) {
-            ItemStack itemStack = reward.getPreviewItem();
-            this.rewardDisplay.setItemStack(itemStack);
-            EntityUtil.setCustomName(this.rewardDisplay, reward.getName());
-        }
+        this.plugin.runAtLocation(location, () -> {
+            if (this.rewardDisplay == null) {
+                this.rewardDisplay = location.getWorld() == null ? null : location.getWorld().spawn(location, Item.class, item -> item.setVelocity(new Vector()));
+                if (this.rewardDisplay != null) {
+                    this.rewardDisplay.setPersistent(false);
+                    this.rewardDisplay.setCustomNameVisible(true);
+                    this.rewardDisplay.setGravity(false);
+                    this.rewardDisplay.setPickupDelay(Integer.MAX_VALUE);
+                    this.rewardDisplay.setUnlimitedLifetime(true);
+                    this.rewardDisplay.setInvulnerable(true);
+                }
+            }
+            if (this.rewardDisplay != null) {
+                ItemStack itemStack = reward.getPreviewItem();
+                this.rewardDisplay.setItemStack(itemStack);
+                EntityUtil.setCustomName(this.rewardDisplay, reward.getName());
+            }
 
-        VanillaSound.of(Sound.UI_BUTTON_CLICK, 0.5f).play(this.displayLocation);
-        VanillaSound.of(Sound.BLOCK_NOTE_BLOCK_BELL, 0.5f).play(this.displayLocation);
+            VanillaSound.of(Sound.UI_BUTTON_CLICK, 0.5f).play(location);
+            VanillaSound.of(Sound.BLOCK_NOTE_BLOCK_BELL, 0.5f).play(location);
 
-        if (this.isSpinsCompleted()) {
-            VanillaSound.of(Sound.ENTITY_GENERIC_EXPLODE, 0.7f).play(this.displayLocation);
-            OpeningUtils.createFirework(this.displayLocation);
-        }
+            if (this.isSpinsCompleted()) {
+                VanillaSound.of(Sound.ENTITY_GENERIC_EXPLODE, 0.7f).play(location);
+                OpeningUtils.createFirework(location);
+            }
+        });
     }
 }

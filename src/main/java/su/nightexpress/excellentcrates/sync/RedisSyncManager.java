@@ -36,6 +36,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 public class RedisSyncManager {
 
@@ -617,17 +618,12 @@ public class RedisSyncManager {
 
         UUID playerId = UUID.fromString(playerIdStr);
 
-        this.plugin.runTask(() -> {
-            Player player = Bukkit.getPlayer(playerId);
-
+        this.runForOnlinePlayer(playerId, player -> {
             CrateKey key = this.plugin.getKeyManager().getKeyById(keyId);
             if (key == null || key.isVirtual()) return;
 
-            if (player != null) {
-                this.plugin.getKeyManager().giveKey(player, key, amount);
-                this.plugin.info("Gave physical key '" + keyId + "' x" + amount + " to " + player.getName() + " via Redis request from " + origin + ".");
-            }
-            // If player not online on this node, ignore. Another node should handle if the player is present there.
+            this.plugin.getKeyManager().giveKey(player, key, amount);
+            this.plugin.info("Gave physical key '" + keyId + "' x" + amount + " to " + player.getName() + " via Redis request from " + origin + ".");
         });
     }
 
@@ -671,19 +667,14 @@ public class RedisSyncManager {
             });
         }
 
-        this.plugin.runTask(() -> {
-            Player player = Bukkit.getPlayer(playerId);
+        this.runForOnlinePlayer(playerId, player -> {
             CrateKey key = this.plugin.getKeyManager().getKeyById(keyId);
-
             if (key == null || key.isVirtual()) return;
 
-            if (player != null) {
-                // Give keys with pre-generated UUIDs
-                this.plugin.getKeyManager().givePhysicalKeysWithUuids(player, key, amount, keyUuids);
-                this.plugin.info("Gave physical key '" + keyId + "' x" + amount + " with UUIDs to " + player.getName() + " via Redis request from " + origin + ".");
+            this.plugin.getKeyManager().givePhysicalKeysWithUuids(player, key, amount, keyUuids);
+            this.plugin.info("Gave physical key '" + keyId + "' x" + amount + " with UUIDs to " + player.getName() + " via Redis request from " + origin + ".");
 
-                publishKeyDeliveryNotification(playerId, keyId, amount, origin);
-            }
+            publishKeyDeliveryNotification(playerId, keyId, amount, origin);
         });
     }
 
@@ -693,10 +684,7 @@ public class RedisSyncManager {
         int amount = data.get("amount").getAsInt();
         String origin = data.get("origin").getAsString();
 
-        this.plugin.runTask(() -> {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player == null) return;
-
+        this.runForOnlinePlayer(playerId, player -> {
             CrateKey key = this.plugin.getKeyManager().getKeyById(keyId);
             if (key == null) return;
 
@@ -716,19 +704,16 @@ public class RedisSyncManager {
         int amount = data.get("amount").getAsInt();
         String origin = data.has("origin") && !data.get("origin").isJsonNull() ? data.get("origin").getAsString() : "unknown";
 
-        this.plugin.runTask(() -> {
-            Player player = Bukkit.getPlayer(playerId);
+        this.runForOnlinePlayer(playerId, player -> {
             var crate = this.plugin.getCrateManager().getCrateById(crateId);
             if (crate == null) return;
 
-            if (player != null) {
-                this.plugin.getCrateManager().giveCrateItem(player, crate, amount);
-                Lang.COMMAND_GIVE_NOTIFY.message().send(player, replacer -> replacer
-                    .replace(Placeholders.GENERIC_AMOUNT, amount)
-                    .replace(crate.replacePlaceholders())
-                );
-                this.plugin.info("Gave crate '" + crateId + "' x" + amount + " to " + player.getName() + " via Redis request from " + origin + ".");
-            }
+            this.plugin.getCrateManager().giveCrateItem(player, crate, amount);
+            Lang.COMMAND_GIVE_NOTIFY.message().send(player, replacer -> replacer
+                .replace(Placeholders.GENERIC_AMOUNT, amount)
+                .replace(crate.replacePlaceholders())
+            );
+            this.plugin.info("Gave crate '" + crateId + "' x" + amount + " to " + player.getName() + " via Redis request from " + origin + ".");
         });
     }
 
@@ -738,19 +723,16 @@ public class RedisSyncManager {
         int amount = data.get("amount").getAsInt();
         String origin = data.has("origin") && !data.get("origin").isJsonNull() ? data.get("origin").getAsString() : "unknown";
 
-        this.plugin.runTask(() -> {
-            Player player = Bukkit.getPlayerExact(playerName);
+        su.nightexpress.excellentcrates.util.FoliaTasks.runForOnlinePlayer(this.plugin, playerName, player -> {
             var crate = this.plugin.getCrateManager().getCrateById(crateId);
             if (crate == null) return;
 
-            if (player != null) {
-                this.plugin.getCrateManager().giveCrateItem(player, crate, amount);
-                Lang.COMMAND_GIVE_NOTIFY.message().send(player, replacer -> replacer
-                    .replace(Placeholders.GENERIC_AMOUNT, amount)
-                    .replace(crate.replacePlaceholders())
-                );
-                this.plugin.info("Gave crate '" + crateId + "' x" + amount + " to " + player.getName() + " via Redis-by-name request from " + origin + ".");
-            }
+            this.plugin.getCrateManager().giveCrateItem(player, crate, amount);
+            Lang.COMMAND_GIVE_NOTIFY.message().send(player, replacer -> replacer
+                .replace(Placeholders.GENERIC_AMOUNT, amount)
+                .replace(crate.replacePlaceholders())
+            );
+            this.plugin.info("Gave crate '" + crateId + "' x" + amount + " to " + player.getName() + " via Redis-by-name request from " + origin + ".");
         });
     }
 
@@ -759,13 +741,10 @@ public class RedisSyncManager {
         String reason = data.get("reason").getAsString();
         String origin = data.get("origin").getAsString();
 
-        this.plugin.runTask(() -> {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                this.plugin.getOpeningManager().stopOpening(player);
-                this.plugin.info("Cleaned up opening state for " + player.getName() +
-                               " due to cross-server event: " + reason + " from " + origin);
-            }
+        this.runForOnlinePlayer(playerId, player -> {
+            this.plugin.getOpeningManager().stopOpening(player);
+            this.plugin.info("Cleaned up opening state for " + player.getName() +
+                           " due to cross-server event: " + reason + " from " + origin);
         });
     }
 
@@ -805,6 +784,10 @@ public class RedisSyncManager {
                 this.crossServerPlayerNames.add(playerName);
             }
         }
+    }
+
+    private void runForOnlinePlayer(@NotNull UUID playerId, @NotNull Consumer<Player> action) {
+        su.nightexpress.excellentcrates.util.FoliaTasks.runForOnlinePlayer(this.plugin, playerId, action);
     }
 
     @NotNull

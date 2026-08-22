@@ -5,16 +5,18 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
-import org.jetbrains.annotations.NotNull;
+import io.lettuce.core.ClientOptions;
+import io.lettuce.core.RedisClient;
+import io.lettuce.core.RedisURI;
+import io.lettuce.core.SetArgs;
+import io.lettuce.core.SocketOptions;
+import io.lettuce.core.api.StatefulRedisConnection;
+import io.lettuce.core.api.async.RedisAsyncCommands;
+import io.lettuce.core.pubsub.RedisPubSubAdapter;
+import io.lettuce.core.pubsub.StatefulRedisPubSubConnection;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
-import su.nightexpress.nightcore.lib.redis.jedis.DefaultJedisClientConfig;
-import su.nightexpress.nightcore.lib.redis.jedis.HostAndPort;
-import su.nightexpress.nightcore.lib.redis.jedis.Jedis;
-import su.nightexpress.nightcore.lib.redis.jedis.JedisPool;
-import su.nightexpress.nightcore.lib.redis.jedis.JedisPubSub;
-import su.nightexpress.nightcore.lib.redis.jedis.params.SetParams;
-import su.nightexpress.nightcore.lib.commons.pool2.impl.GenericObjectPoolConfig;
+import org.jetbrains.annotations.NotNull;
 import su.nightexpress.excellentcrates.CratesPlugin;
 import su.nightexpress.excellentcrates.Placeholders;
 import su.nightexpress.excellentcrates.config.Config;
@@ -23,30 +25,33 @@ import su.nightexpress.excellentcrates.data.crate.GlobalCrateData;
 import su.nightexpress.excellentcrates.data.crate.UserCrateData;
 import su.nightexpress.excellentcrates.data.reward.RewardData;
 import su.nightexpress.excellentcrates.data.serialize.UserCrateDataSerializer;
-import su.nightexpress.excellentcrates.user.CrateUser;
 import su.nightexpress.excellentcrates.key.CrateKey;
+import su.nightexpress.excellentcrates.user.CrateUser;
 
 import java.lang.reflect.Type;
+import java.time.Duration;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 public class RedisSyncManager {
 
-    private final CratesPlugin plugin;
-    private JedisPool pool;
-    private JedisPubSub subscriber;
-    private Thread subscriberThread;
+    private static final long COMMAND_TIMEOUT_SECONDS = 3L;
 
+    private final CratesPlugin plugin;
     private final Gson gson;
     private final String nodeId;
+    private final Set<String> crossServerPlayerNames = new HashSet<>();
+
+    private RedisClient client;
+    private StatefulRedisConnection<String, String> connection;
+    private StatefulRedisPubSubConnection<String, String> pubSubConnection;
+    private RedisAsyncCommands<String, String> async;
     private String channel;
     private volatile boolean active;
-
-    private final Set<String> crossServerPlayerNames = new HashSet<>();
 
     public RedisSyncManager(@NotNull CratesPlugin plugin) {
         this.plugin = plugin;
@@ -72,50 +77,67 @@ public class RedisSyncManager {
         this.channel = Config.REDIS_CHANNEL.get();
 
         try {
-            DefaultJedisClientConfig clientConfig = DefaultJedisClientConfig.builder()
-                .password((password == null || password.isEmpty()) ? null : password)
-                .ssl(ssl)
-                .connectionTimeoutMillis(5000)
-                .socketTimeoutMillis(5000)
-                .build();
+            RedisURI.Builder builder = RedisURI.builder()
+                .withHost(host)
+                .withPort(port)
+                .withTimeout(Duration.ofSeconds(5))
+                .withSsl(ssl);
 
-            GenericObjectPoolConfig<Jedis> poolConfig = new GenericObjectPoolConfig<>();
-            poolConfig.setMaxTotal(20);
-            poolConfig.setMaxIdle(10);
-            poolConfig.setMinIdle(2);
-            poolConfig.setTestOnBorrow(true);
-            poolConfig.setTestOnReturn(true);
-            poolConfig.setTestWhileIdle(true);
-            poolConfig.setTimeBetweenEvictionRunsMillis(30000);
+            if (password != null && !password.isEmpty()) {
+                builder.withPassword(password.toCharArray());
+            }
 
-            this.pool = new JedisPool(poolConfig, new HostAndPort(host, port), clientConfig);
+            this.client = RedisClient.create(builder.build());
+            this.client.setOptions(ClientOptions.builder()
+                .autoReconnect(true)
+                .socketOptions(SocketOptions.builder()
+                    .connectTimeout(Duration.ofSeconds(5))
+                    .keepAlive(true)
+                    .build())
+                .build());
+            this.connection = this.client.connect();
+            this.async = this.connection.async();
+            this.pubSubConnection = this.client.connectPubSub();
             this.active = true;
             this.startSubscriber();
 
-            this.plugin.info("Redis sync enabled. Channel: " + this.channel + " | NodeId: " + this.nodeId);
+            this.plugin.info("Redis sync enabled via Lettuce. Channel: " + this.channel + " | NodeId: " + this.nodeId);
         }
         catch (Exception e) {
             this.plugin.error("Failed to initialize Redis: " + e.getMessage());
-            this.active = false;
+            this.shutdown();
         }
     }
 
     public void shutdown() {
         this.active = false;
-        try {
-            if (this.subscriber != null) {
-                this.subscriber.unsubscribe();
+        this.async = null;
+
+        if (this.pubSubConnection != null) {
+            try {
+                this.pubSubConnection.close();
             }
+            catch (Exception ignored) {}
+            this.pubSubConnection = null;
         }
-        catch (Exception ignored) {}
-        try {
-            if (this.pool != null) this.pool.close();
+        if (this.connection != null) {
+            try {
+                this.connection.close();
+            }
+            catch (Exception ignored) {}
+            this.connection = null;
         }
-        catch (Exception ignored) {}
+        if (this.client != null) {
+            try {
+                this.client.shutdown(0, 2, TimeUnit.SECONDS);
+            }
+            catch (Exception ignored) {}
+            this.client = null;
+        }
     }
 
     public boolean isActive() {
-        return this.pool != null && this.active;
+        return this.async != null && this.active;
     }
 
     @NotNull
@@ -133,14 +155,17 @@ public class RedisSyncManager {
         long expiresAt = System.currentTimeMillis() + ttlMillis;
         String key = this.getCrateCooldownKey(playerId, crateId);
 
-        try (Jedis jedis = this.pool.getResource()) {
-            String result = jedis.set(key, String.valueOf(expiresAt), SetParams.setParams().nx().px(ttlMillis));
+        try {
+            String result = this.async.set(key, String.valueOf(expiresAt), SetArgs.Builder.nx().px(ttlMillis))
+                .toCompletableFuture()
+                .get(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
             if ("OK".equalsIgnoreCase(result)) {
                 return CrateCooldownReservation.allowed(expiresAt);
             }
 
-            long remaining = jedis.pttl(key);
-            long cooldownUntil = remaining > 0L ? System.currentTimeMillis() + remaining : this.parseCooldownUntil(jedis.get(key));
+            Long remaining = this.async.pttl(key).toCompletableFuture().get(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            String existing = this.async.get(key).toCompletableFuture().get(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+            long cooldownUntil = remaining != null && remaining > 0L ? System.currentTimeMillis() + remaining : this.parseCooldownUntil(existing);
             return CrateCooldownReservation.denied(cooldownUntil);
         }
         catch (Exception e) {
@@ -158,8 +183,10 @@ public class RedisSyncManager {
         long expiresAt = System.currentTimeMillis() + ttlMillis;
         String key = this.getCrateCooldownKey(playerId, crateId);
 
-        try (Jedis jedis = this.pool.getResource()) {
-            jedis.set(key, String.valueOf(expiresAt), SetParams.setParams().px(ttlMillis));
+        try {
+            this.async.set(key, String.valueOf(expiresAt), SetArgs.Builder.px(ttlMillis))
+                .toCompletableFuture()
+                .get(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         }
         catch (Exception e) {
             this.plugin.warn("Redis crate cooldown refresh failed for '" + crateId + "': " + e.getMessage());
@@ -171,8 +198,10 @@ public class RedisSyncManager {
             return;
         }
 
-        try (Jedis jedis = this.pool.getResource()) {
-            jedis.del(this.getCrateCooldownKey(playerId, crateId));
+        try {
+            this.async.del(this.getCrateCooldownKey(playerId, crateId))
+                .toCompletableFuture()
+                .get(COMMAND_TIMEOUT_SECONDS, TimeUnit.SECONDS);
         }
         catch (Exception e) {
             this.plugin.warn("Redis crate cooldown release failed for '" + crateId + "': " + e.getMessage());
@@ -437,13 +466,14 @@ public class RedisSyncManager {
         root.addProperty("nodeId", this.nodeId);
         root.add("data", data);
 
+        String payload = this.gson.toJson(root);
         this.plugin.getFoliaScheduler().runAsync(() -> {
-            try (Jedis jedis = this.pool.getResource()) {
-                jedis.publish(this.channel, this.gson.toJson(root));
-            }
-            catch (Exception e) {
-                this.plugin.warn("Redis publish failed: " + e.getMessage());
-            }
+            if (this.async == null) return;
+            this.async.publish(this.channel, payload).whenComplete((result, error) -> {
+                if (error != null) {
+                    this.plugin.warn("Redis publish failed: " + error.getMessage());
+                }
+            });
         });
     }
 
@@ -452,35 +482,15 @@ public class RedisSyncManager {
        ========================= */
 
     private void startSubscriber() {
-        this.subscriber = new JedisPubSub() {
+        if (this.pubSubConnection == null) return;
+
+        this.pubSubConnection.addListener(new RedisPubSubAdapter<>() {
             @Override
-            public void onMessage(String channel, String message) {
+            public void message(String channel, String message) {
                 handleIncoming(message);
             }
-        };
-
-        this.subscriberThread = new Thread(() -> {
-            while (this.active) {
-                try (Jedis jedis = this.pool.getResource()) {
-                    jedis.subscribe(this.subscriber, this.channel);
-                }
-                catch (Exception e) {
-                    this.plugin.error("Redis subscriber error: " + e.getMessage());
-                    if (this.active) {
-                        this.plugin.info("Attempting to reconnect Redis subscriber in 5 seconds...");
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException ie) {
-                            Thread.currentThread().interrupt();
-                            break;
-                        }
-                    }
-                }
-            }
-        }, "ExcellentCrates-RedisSubscriber");
-
-        this.subscriberThread.setDaemon(true);
-        this.subscriberThread.start();
+        });
+        this.pubSubConnection.async().subscribe(this.channel);
 
         this.plugin.getFoliaScheduler().runTimerAsync(this::syncPlayerNames, 0L, 600L);
     }
@@ -529,7 +539,7 @@ public class RedisSyncManager {
         Map<String, Integer> keys = this.gson.fromJson(data.get("keys"), mapSI);
         Map<String, UserCrateData> crates = this.gson.fromJson(data.get("crateData"), mapSUserData);
 
-        this.plugin.runTask(task -> {
+        this.plugin.runTask(() -> {
             CrateUser user = this.plugin.getUserManager().getLoaded(id);
             if (user != null) {
                 user.getKeysMap().clear();
@@ -607,7 +617,7 @@ public class RedisSyncManager {
 
         UUID playerId = UUID.fromString(playerIdStr);
 
-        this.plugin.runTask(task -> {
+        this.plugin.runTask(() -> {
             Player player = Bukkit.getPlayer(playerId);
 
             CrateKey key = this.plugin.getKeyManager().getKeyById(keyId);
@@ -626,9 +636,7 @@ public class RedisSyncManager {
 
         try {
             UUID keyUuid = UUID.fromString(uuidStr);
-            this.plugin.runTask(task -> {
-                this.plugin.getUuidAntiDupeManager().applyExternalKeyUuidRegistered(keyUuid);
-            });
+            this.plugin.runTask(() -> this.plugin.getUuidAntiDupeManager().applyExternalKeyUuidRegistered(keyUuid));
         } catch (IllegalArgumentException e) {
             this.plugin.warn("Invalid UUID received from Redis: " + uuidStr);
         }
@@ -639,9 +647,7 @@ public class RedisSyncManager {
 
         try {
             UUID keyUuid = UUID.fromString(uuidStr);
-            this.plugin.runTask(task -> {
-                this.plugin.getUuidAntiDupeManager().applyExternalKeyUuidUsed(keyUuid);
-            });
+            this.plugin.runTask(() -> this.plugin.getUuidAntiDupeManager().applyExternalKeyUuidUsed(keyUuid));
         } catch (IllegalArgumentException e) {
             this.plugin.warn("Invalid used UUID received from Redis: " + uuidStr);
         }
@@ -665,7 +671,7 @@ public class RedisSyncManager {
             });
         }
 
-        this.plugin.runTask(task -> {
+        this.plugin.runTask(() -> {
             Player player = Bukkit.getPlayer(playerId);
             CrateKey key = this.plugin.getKeyManager().getKeyById(keyId);
 
@@ -687,14 +693,14 @@ public class RedisSyncManager {
         int amount = data.get("amount").getAsInt();
         String origin = data.get("origin").getAsString();
 
-        this.plugin.runTask(task -> {
+        this.plugin.runTask(() -> {
             Player player = Bukkit.getPlayer(playerId);
             if (player == null) return;
 
             CrateKey key = this.plugin.getKeyManager().getKeyById(keyId);
             if (key == null) return;
 
-Lang.COMMAND_KEY_GIVE_NOTIFY.message().send(player, replacer -> replacer
+            Lang.COMMAND_KEY_GIVE_NOTIFY.message().send(player, replacer -> replacer
                 .replace(Placeholders.GENERIC_AMOUNT, amount)
                 .replace(key.replacePlaceholders())
             );
@@ -710,7 +716,7 @@ Lang.COMMAND_KEY_GIVE_NOTIFY.message().send(player, replacer -> replacer
         int amount = data.get("amount").getAsInt();
         String origin = data.has("origin") && !data.get("origin").isJsonNull() ? data.get("origin").getAsString() : "unknown";
 
-        this.plugin.runTask(task -> {
+        this.plugin.runTask(() -> {
             Player player = Bukkit.getPlayer(playerId);
             var crate = this.plugin.getCrateManager().getCrateById(crateId);
             if (crate == null) return;
@@ -732,7 +738,7 @@ Lang.COMMAND_KEY_GIVE_NOTIFY.message().send(player, replacer -> replacer
         int amount = data.get("amount").getAsInt();
         String origin = data.has("origin") && !data.get("origin").isJsonNull() ? data.get("origin").getAsString() : "unknown";
 
-        this.plugin.runTask(task -> {
+        this.plugin.runTask(() -> {
             Player player = Bukkit.getPlayerExact(playerName);
             var crate = this.plugin.getCrateManager().getCrateById(crateId);
             if (crate == null) return;
@@ -753,7 +759,7 @@ Lang.COMMAND_KEY_GIVE_NOTIFY.message().send(player, replacer -> replacer
         String reason = data.get("reason").getAsString();
         String origin = data.get("origin").getAsString();
 
-        this.plugin.runTask(task -> {
+        this.plugin.runTask(() -> {
             Player player = Bukkit.getPlayer(playerId);
             if (player != null) {
                 this.plugin.getOpeningManager().stopOpening(player);

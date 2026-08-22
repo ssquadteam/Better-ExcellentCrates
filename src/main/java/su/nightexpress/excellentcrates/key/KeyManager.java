@@ -13,6 +13,11 @@ import su.nightexpress.excellentcrates.config.Config;
 import su.nightexpress.excellentcrates.config.Keys;
 import su.nightexpress.excellentcrates.crate.cost.type.impl.KeyCostType;
 import su.nightexpress.excellentcrates.crate.impl.Crate;
+import su.nightexpress.excellentcrates.dialog.DialogRegistry;
+import su.nightexpress.excellentcrates.dialog.key.KeyCreationDialog;
+import su.nightexpress.excellentcrates.dialog.key.KeyItemDialog;
+import su.nightexpress.excellentcrates.dialog.key.KeyNameDialog;
+import su.nightexpress.excellentcrates.key.dialog.KeyDialogs;
 import su.nightexpress.excellentcrates.registry.CratesRegistries;
 import su.nightexpress.excellentcrates.user.CrateUser;
 import su.nightexpress.excellentcrates.util.ItemHelper;
@@ -31,10 +36,13 @@ import java.util.function.Predicate;
 
 public class KeyManager extends AbstractManager<CratesPlugin> {
 
+    private final DialogRegistry dialogs;
+
     private final Map<String, CrateKey> keyByIdMap;
 
-    public KeyManager(@NotNull CratesPlugin plugin) {
+    public KeyManager(@NotNull CratesPlugin plugin, @NotNull DialogRegistry dialogs) {
         super(plugin);
+        this.dialogs = dialogs;
         this.keyByIdMap = new HashMap<>();
     }
 
@@ -42,7 +50,8 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
     protected void onLoad() {
         this.loadCost();
         this.loadKeys();
-        this.plugin.runNextTick(this::runInspections); // When everything is loaded.
+        this.loadDialogs();
+        this.plugin.runNextTick(this::reportProblems);
 
         this.addListener(new KeyListener(this.plugin, this));
         this.addAsyncTask(this::saveKeys, Config.CRATE_SAVE_INTERVAL.get()); // TODO Config
@@ -55,7 +64,7 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
     }
 
     private void loadCost() {
-        CratesRegistries.registerCostType(new KeyCostType(this.plugin, this));
+        CratesRegistries.registerCostType(new KeyCostType(this.plugin, this, this.dialogs));
     }
 
     private void loadKeys() {
@@ -75,6 +84,12 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
             this.plugin.error("Key not loaded: '" + key.getPath() + "'.");
             exception.printStackTrace();
         }
+    }
+
+    private void loadDialogs() {
+        this.dialogs.register(KeyDialogs.CREATION, KeyCreationDialog::new);
+        this.dialogs.register(KeyDialogs.NAME, KeyNameDialog::new);
+        this.dialogs.register(KeyDialogs.ITEM, KeyItemDialog::new);
     }
 
     private void saveKeys() {
@@ -241,6 +256,10 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
         }
 
         return null;
+    }
+
+    public boolean isValidKey(@NotNull String keyId) {
+        return this.getKeyById(keyId) != null;
     }
 
     public boolean isKey(@NotNull ItemStack item) {
@@ -420,10 +439,6 @@ public class KeyManager extends AbstractManager<CratesPlugin> {
                 }
             }
         }
-    }
-
-    private void runInspections() {
-        this.reportProblems();
     }
 
     public boolean givePhysicalKeyCrossServer(@NotNull String keyId, @NotNull UUID playerId, int amount) {

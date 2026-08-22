@@ -40,12 +40,21 @@ repositories {
     }
 }
 
+def nightcoreJar = file('libs/nightcore-3.1.0.jar')
+if (!nightcoreJar.exists()) {
+    nightcoreJar.parentFile.mkdirs()
+    ant.get(
+        src: 'https://github.com/ssquadteam/Better-NightCore/releases/download/v3.1.0/nightcore-3.1.0.jar',
+        dest: nightcoreJar
+    )
+}
+
 dependencies {
-    compileOnly 'io.papermc.paper:paper-api:1.21.9-R0.1-SNAPSHOT'
+    compileOnly 'io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT'
     compileOnly 'com.github.retrooper:packetevents-spigot:2.9.5'
     compileOnly 'me.clip:placeholderapi:2.11.6'
-    compileOnly 'su.nightexpress.economybridge:economy-bridge:1.2.1' 
-    compileOnly name: 'nightcore-3.0.3', version: "3.0.3"
+    compileOnly 'io.lettuce:lettuce-core:7.6.0.RELEASE'
+    compileOnly name: 'nightcore-3.1.0', version: '3.1.0'
 }
 
 processResources {

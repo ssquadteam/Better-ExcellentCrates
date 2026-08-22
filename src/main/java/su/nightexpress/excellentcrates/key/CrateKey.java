@@ -64,6 +64,7 @@ public class CrateKey implements ConfigBacked {
 
         AdaptedItem adapted = ItemHelper.read(config, "ItemData").orElse(ItemHelper.vanilla(new ItemStack(Material.TRIPWIRE_HOOK)));
         this.setItem(adapted);
+        this.setItemStackable(config.getBoolean("ItemStackable", true));
     }
 
     public void saveForce() {
@@ -82,6 +83,7 @@ public class CrateKey implements ConfigBacked {
         config.set("Name", this.name);
         config.set("Virtual", this.virtual);
         config.set("ItemData", this.item);
+        config.set("ItemStackable", this.itemStackable);
     }
 
     @NotNull
@@ -156,7 +158,10 @@ public class CrateKey implements ConfigBacked {
     public ItemStack getItemStack(boolean fullData) {
         ItemStack item = ItemHelper.toItemStack(this.item);
         ItemUtil.editMeta(item, meta -> {
-            PDCUtil.set(meta, Keys.keyId, this.getId());
+            if (fullData) {
+                meta.setMaxStackSize(this.itemStackable ? null : 1);
+                PDCUtil.set(meta, Keys.keyId, this.getId());
+            }
         });
 
         if (!this.isVirtual()) {
@@ -181,7 +186,8 @@ public class CrateKey implements ConfigBacked {
                     })
                     .writeMeta();
             }
-        } catch (Throwable ignored) {}
+        }
+        catch (Throwable ignored) {}
 
         return item;
     }

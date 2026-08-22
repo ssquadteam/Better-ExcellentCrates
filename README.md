@@ -4,7 +4,8 @@
 - AntiDupe safeguards using bounded LRU caches with DB fallback
 - Redis sync improvements and cross‑server physical key delivery
 - Packet layer uses PacketEvents; ProtocolLib integration removed
-- Updated to NightCore 2.7.18
+- Updated to ssquadteam Better-NightCore 3.1.0 (FoliaLib 0.5.2)
+- Redis sync uses Lettuce 7.6 (same stack as Better-NightCore; Jedis removed)
 - New giveall usage:
   ```
   /crates key giveall <key> [amount] [-s] [-sf] [world]
@@ -62,19 +63,19 @@
 - [**PlaceholderAPI**](https://nightexpressdev.com/excellentcrates/hooks/placeholder_api/) Support!
 
 ## System Requirements
-- Server Software: [**Spigot**](https://www.spigotmc.org/link-forums/88/) or [**Paper**](https://papermc.io/downloads/paper)
+- Server Software: [**Paper**](https://papermc.io/downloads/paper) or [**Folia**](https://papermc.io/software/folia)
 - Server Version: <span style="color:red">**1.21.8**</span> or above
 - Java Version: [**21**](https://adoptium.net/temurin/releases) or above
 - Dependencies:
-    - [**nightcore**](https://nightexpressdev.com/nightcore/) - Plugin engine.
+    - [**Better-NightCore 3.1.0**](https://github.com/ssquadteam/Better-NightCore) - Plugin engine (ssquadteam fork).
 - Optional Plugins:
-    - [**PacketEvents**](https://spigotmc.org/resources/80279/) or [**ProtocolLib**](https://ci.dmulloy2.net/job/ProtocolLib/) - Crate holograms.
-- Folia Supported: <span style="color:red">**No**</span>
+    - [**PacketEvents**](https://spigotmc.org/resources/80279/) - Crate holograms.
+- Folia Supported: <span style="color:green">**Yes**</span>
 - Forge Supported: <span style="color:red">**No**</span>
 
 # Dependencies
 **REQUIRED:**
-- [nightcore](https://nightexpressdev.com/nightcore/) 2.7.5 or newer.
+- [Better-NightCore](https://github.com/ssquadteam/Better-NightCore) 3.1.0 (ssquadteam Folia/Lettuce fork of NightCore).
 
 **OPTIONAL:**
 - [EconomyBridge](https://nightexpressdev.com/economy-bridge/) - For custom item and open cost support.

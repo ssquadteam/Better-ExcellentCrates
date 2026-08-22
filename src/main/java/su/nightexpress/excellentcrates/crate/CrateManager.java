@@ -21,6 +21,7 @@ import su.nightexpress.excellentcrates.config.Config;
 import su.nightexpress.excellentcrates.config.Keys;
 import su.nightexpress.excellentcrates.config.Lang;
 import su.nightexpress.excellentcrates.crate.cost.Cost;
+import su.nightexpress.excellentcrates.crate.cost.CostDialogs;
 import su.nightexpress.excellentcrates.crate.effect.CrateEffect;
 import su.nightexpress.excellentcrates.crate.effect.EffectId;
 import su.nightexpress.excellentcrates.crate.impl.*;
@@ -33,6 +34,13 @@ import su.nightexpress.excellentcrates.crate.menu.PreviewMenu;
 import su.nightexpress.excellentcrates.data.crate.GlobalCrateData;
 import su.nightexpress.excellentcrates.data.crate.UserCrateData;
 import su.nightexpress.excellentcrates.data.reward.RewardData;
+import su.nightexpress.excellentcrates.dialog.DialogRegistry;
+import su.nightexpress.excellentcrates.crate.reward.RewardDialogs;
+import su.nightexpress.excellentcrates.dialog.cost.CostCreationDialog;
+import su.nightexpress.excellentcrates.dialog.cost.CostEntryCreationDialog;
+import su.nightexpress.excellentcrates.dialog.cost.CostNameDialog;
+import su.nightexpress.excellentcrates.dialog.crate.*;
+import su.nightexpress.excellentcrates.dialog.reward.*;
 import su.nightexpress.excellentcrates.hologram.HologramTemplate;
 import su.nightexpress.excellentcrates.registry.CratesRegistries;
 import su.nightexpress.excellentcrates.sync.RedisSyncManager;
@@ -58,6 +66,8 @@ import java.util.*;
 
 public class CrateManager extends AbstractManager<CratesPlugin> {
 
+    private final DialogRegistry dialogs;
+
     private final Map<String, Rarity>      rarityByIdMap;
     private final Map<String, Crate>       crateByIdMap;
     private final Map<WorldPos, Crate>     crateByPosMap;
@@ -68,8 +78,10 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
     private OpeningAmountMenu amountMenu;
     private MilestonesMenu    milestonesMenu;
 
-    public CrateManager(@NotNull CratesPlugin plugin) {
+    public CrateManager(@NotNull CratesPlugin plugin, @NotNull DialogRegistry dialogs) {
         super(plugin);
+        this.dialogs = dialogs;
+
         this.rarityByIdMap = new HashMap<>();
         this.crateByIdMap = new HashMap<>();
         this.crateByPosMap = new HashMap<>();
@@ -85,6 +97,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
         this.loadPreviews();
         this.loadCrates();
         this.loadUI();
+        this.loadDialogs();
         this.plugin.runTask(task -> this.reportProblems()); // After everything is loaded.
 
         this.addListener(new CrateListener(this.plugin, this));
@@ -194,6 +207,35 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
             this.plugin.error("Crate '" + crate.getPath() + "' can not be loaded.");
             exception.printStackTrace();
         }
+    }
+
+    private void loadDialogs() {
+        this.dialogs.register(CrateDialogs.CRATE_CREATION, CrateCreationDialog::new);
+        this.dialogs.register(CrateDialogs.CRATE_NAME, CrateNameDialog::new);
+        this.dialogs.register(CrateDialogs.CRATE_DESCRIPTION, CrateDescriptionDialog::new);
+        this.dialogs.register(CrateDialogs.CRATE_ITEM, CrateItemDialog::new);
+        this.dialogs.register(CrateDialogs.CRATE_PREVIEW, () -> new CratePreviewDialog(this.plugin));
+        this.dialogs.register(CrateDialogs.CRATE_OPENING, () -> new CrateOpeningDialog(this.plugin));
+        this.dialogs.register(CrateDialogs.CRATE_OPENING_LIMITS, CrateOpeningLimitsDialog::new);
+        this.dialogs.register(CrateDialogs.CRATE_EFFECT, () -> new CrateEffectDialog(this.dialogs));
+        this.dialogs.register(CrateDialogs.CRATE_PARTICLE, CrateParticleDialog::new);
+        this.dialogs.register(CrateDialogs.CRATE_HOLOGRAM, CrateHologramDialog::new);
+        this.dialogs.register(CrateDialogs.CRATE_POST_OPEN_COMMANDS, CratePostOpenCommandsDialog::new);
+
+        this.dialogs.register(RewardDialogs.CREATION, () -> new RewardCreationDialog(this.plugin));
+        this.dialogs.register(RewardDialogs.SORTING, RewardSortingDialog::new);
+        this.dialogs.register(RewardDialogs.PREVIEW, RewardPreviewDialog::new);
+        this.dialogs.register(RewardDialogs.ITEM, RewardItemDialog::new);
+        this.dialogs.register(RewardDialogs.COMMANDS, RewardCommandsDialog::new);
+        this.dialogs.register(RewardDialogs.NAME, RewardNameDialog::new);
+        this.dialogs.register(RewardDialogs.DESCRIPTION, RewardDescriptionDialog::new);
+        this.dialogs.register(RewardDialogs.WEIGHT, () -> new RewardWeightDialog(this.plugin));
+        this.dialogs.register(RewardDialogs.PERMISSIONS, RewardPermissionsDialog::new);
+        this.dialogs.register(RewardDialogs.LIMITS, RewardLimitsDialog::new);
+
+        this.dialogs.register(CostDialogs.CREATION, CostCreationDialog::new);
+        this.dialogs.register(CostDialogs.NAME, CostNameDialog::new);
+        this.dialogs.register(CostDialogs.ENTRY_CREATION, CostEntryCreationDialog::new);
     }
 
     private void reportProblems() {
@@ -520,6 +562,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
     private boolean testRestrictions(@NotNull Player player, @NotNull Crate crate) {
         // Wait until crate datas and reward limits are loaded.
         if (!this.plugin.getDataManager().isDataLoaded()) {
+            Lang.ERROR_DATA_IS_LOADING.message().send(player);
             return false;
         }
 
@@ -545,7 +588,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
     public boolean openCrate(@NotNull Player player, @NotNull CrateSource source, @NotNull OpenOptions options, @Nullable Cost cost) {
         Crate crate = source.getCrate();
         CrateUser user = plugin.getUserManager().getOrFetch(player);
-        UserCrateData crateData = user.getCrateData(crate);
+        UserCrateData userCrate = user.getCrateData(crate);
         Cost realCost = options.has(OpenOptions.Option.IGNORE_COST) ? null : cost;
 
         if (!this.testRestrictions(player, crate)) {
@@ -564,13 +607,19 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
             return false;
         }
 
-        if (!options.has(OpenOptions.Option.IGNORE_COOLDOWN) && crate.isOpeningCooldownEnabled() && crateData.hasCooldown()) {
-            (crateData.isCooldownPermanent() ? Lang.CRATE_OPEN_ERROR_COOLDOWN_ONE_TIMED : Lang.CRATE_OPEN_ERROR_COOLDOWN_TEMPORARY).message().send(player, replacer -> replacer
-                .replace(Placeholders.GENERIC_TIME, TimeFormats.formatDuration(crateData.getOpenCooldown(), TimeFormatType.LITERAL))
-                .replace(crate.replacePlaceholders())
-            );
-            this.pushback(player, source);
-            return false;
+        if (!options.has(OpenOptions.Option.IGNORE_COOLDOWN) && crate.isOpeningCooldownEnabled() && userCrate.isOnCooldown()) {
+            int openLimit = crate.getOpeningLimitAmount();
+            int openStreak = userCrate.queryOpeningStreak();
+            int remaining = openLimit - openStreak;
+
+            if (remaining <= 0) {
+                (userCrate.isCooldownPermanent() ? Lang.CRATE_OPEN_ERROR_COOLDOWN_ONE_TIMED : Lang.CRATE_OPEN_ERROR_COOLDOWN_TEMPORARY).message().send(player, replacer -> replacer
+                    .replace(Placeholders.GENERIC_TIME, TimeFormats.formatDuration(userCrate.getCooldownTimestamp(), TimeFormatType.LITERAL))
+                    .replace(crate.replacePlaceholders())
+                );
+                this.pushback(player, source);
+                return false;
+            }
         }
 
         if (realCost != null && !realCost.canAfford(player)) {
@@ -591,13 +640,13 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
 
         if (!options.has(OpenOptions.Option.IGNORE_COOLDOWN) && !crate.hasCooldownBypassPermission(player) && this.isCrossServerCooldownEnabled(crate)) {
             RedisSyncManager.CrateCooldownReservation reservation = this.plugin.getRedisSyncManager()
-                .map(sync -> sync.reserveCrateCooldown(player.getUniqueId(), crate.getId(), crate.getOpenCooldown()))
+                .map(sync -> sync.reserveCrateCooldown(player.getUniqueId(), crate.getId(), crate.getOpeningCooldownTime()))
                 .orElse(RedisSyncManager.CrateCooldownReservation.unavailable());
 
             if (reservation.available() && !reservation.allowed()) {
-                crateData.setOpenCooldown(reservation.cooldownUntil());
+                userCrate.setCooldownTimestamp(reservation.cooldownUntil());
                 Lang.CRATE_OPEN_ERROR_COOLDOWN_TEMPORARY.message().send(player, replacer -> replacer
-                    .replace(Placeholders.GENERIC_TIME, TimeFormats.formatDuration(crateData.getOpenCooldown(), TimeFormatType.LITERAL))
+                    .replace(Placeholders.GENERIC_TIME, TimeFormats.formatDuration(userCrate.getCooldownTimestamp(), TimeFormatType.LITERAL))
                     .replace(crate.replacePlaceholders())
                 );
                 this.pushback(player, source);
@@ -605,7 +654,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
             }
 
             if (reservation.allowed()) {
-                crateData.setOpenCooldown(reservation.cooldownUntil());
+                userCrate.setCooldownTimestamp(reservation.cooldownUntil());
             }
         }
 
@@ -632,7 +681,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
     }
 
     private boolean isCrossServerCooldownEnabled(@NotNull Crate crate) {
-        return crate.hasOpenCooldown() && Config.isCrossServerCooldownCrate(crate.getId()) && crate.getOpenCooldown() > 0L;
+        return crate.hasOpenCooldown() && Config.isCrossServerCooldownCrate(crate.getId()) && crate.getOpeningCooldownTime() > 0;
     }
 
     private void pushback(@NotNull Player player, @NotNull CrateSource source) {
@@ -671,7 +720,7 @@ public class CrateManager extends AbstractManager<CratesPlugin> {
         GlobalCrateData globalData = this.plugin.getDataManager().getCrateDataOrCreate(crate);
 
         globalData.setLatestReward(reward);
-        globalData.setSaveRequired(true);
+        globalData.setDirty(true);
 
         if (reward.isBroadcast()) {
             Lang.CRATE_OPEN_REWARD_BROADCAST.message().broadcast(replacer -> replacer

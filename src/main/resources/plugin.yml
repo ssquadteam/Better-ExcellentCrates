@@ -9,3 +9,5 @@ softdepend:
   - packetevents
 api-version: 1.21
 folia-supported: true
+libraries:
+  - io.lettuce:lettuce-core:7.6.0.RELEASE

@@ -4,11 +4,15 @@ import org.jetbrains.annotations.NotNull;
 import su.nightexpress.excellentcrates.api.addon.CratesAddon;
 import su.nightexpress.excellentcrates.command.BaseCommands;
 import su.nightexpress.excellentcrates.command.antidupe.AntiDupeCommands;
-import su.nightexpress.excellentcrates.config.*;
+import su.nightexpress.excellentcrates.config.Config;
+import su.nightexpress.excellentcrates.config.Keys;
+import su.nightexpress.excellentcrates.config.Lang;
+import su.nightexpress.excellentcrates.config.Perms;
 import su.nightexpress.excellentcrates.crate.CrateManager;
+import su.nightexpress.excellentcrates.crate.cost.type.impl.EcoCostType;
 import su.nightexpress.excellentcrates.data.DataHandler;
 import su.nightexpress.excellentcrates.data.DataManager;
-import su.nightexpress.excellentcrates.dialog.CrateDialogs;
+import su.nightexpress.excellentcrates.dialog.DialogRegistry;
 import su.nightexpress.excellentcrates.editor.EditorManager;
 import su.nightexpress.excellentcrates.hologram.HologramManager;
 import su.nightexpress.excellentcrates.hooks.impl.PlaceholderHook;
@@ -17,13 +21,12 @@ import su.nightexpress.excellentcrates.key.UuidAntiDupeManager;
 import su.nightexpress.excellentcrates.opening.OpeningManager;
 import su.nightexpress.excellentcrates.opening.ProviderRegistry;
 import su.nightexpress.excellentcrates.registry.CratesRegistries;
+import su.nightexpress.excellentcrates.sync.RedisSyncManager;
 import su.nightexpress.excellentcrates.user.UserManager;
 import su.nightexpress.nightcore.NightPlugin;
+import su.nightexpress.nightcore.commands.command.NightCommand;
 import su.nightexpress.nightcore.config.PluginDetails;
 import su.nightexpress.nightcore.util.Plugins;
-import su.nightexpress.nightcore.util.Version;
-import su.nightexpress.excellentcrates.sync.RedisSyncManager;
-import su.nightexpress.nightcore.commands.command.NightCommand;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +36,8 @@ import java.util.function.Consumer;
 public class CratesPlugin extends NightPlugin {
 
     private final List<CratesAddon> addons = new ArrayList<>();
+
+    private DialogRegistry dialogRegistry;
 
     private DataHandler dataHandler;
     private DataManager dataManager;
@@ -44,8 +49,8 @@ public class CratesPlugin extends NightPlugin {
     private CrateManager    crateManager;
     private EditorManager   editorManager;
     private RedisSyncManager redisSyncManager;
-    private CrateLogger     crateLogger;
-    private CrateDialogs    dialogs;
+
+    private CrateLogger crateLogger;
 
     @Override
     @NotNull
@@ -73,9 +78,13 @@ public class CratesPlugin extends NightPlugin {
 
     @Override
     public void enable() {
-        this.loadEngine();
-
         this.crateLogger = new CrateLogger(this);
+        this.dialogRegistry = new DialogRegistry(this);
+
+        ProviderRegistry.load();
+        CratesRegistries.load(this);
+        CratesRegistries.registerCostType(new EcoCostType(this, this.dialogRegistry));
+        this.proceedAddons(CratesAddon::onInit);
 
         this.dataHandler = new DataHandler(this);
         this.dataHandler.setup();
@@ -86,19 +95,24 @@ public class CratesPlugin extends NightPlugin {
         this.userManager = new UserManager(this, this.dataHandler);
         this.userManager.setup();
 
+        if (Config.HOLOGRAMS_ENABLED.get()) {
+            this.hologramManager = new HologramManager(this);
+            this.hologramManager.setup();
+        }
+
         this.openingManager = new OpeningManager(this);
         this.openingManager.setup();
 
-        this.keyManager = new KeyManager(this);
+        this.keyManager = new KeyManager(this, this.dialogRegistry);
         this.keyManager.setup();
 
         this.uuidAntiDupeManager = new UuidAntiDupeManager(this);
         this.uuidAntiDupeManager.setup();
 
-        this.crateManager = new CrateManager(this);
+        this.crateManager = new CrateManager(this, this.dialogRegistry);
         this.crateManager.setup();
 
-        this.editorManager = new EditorManager(this);
+        this.editorManager = new EditorManager(this, this.dialogRegistry);
         this.editorManager.setup();
 
         this.redisSyncManager = new RedisSyncManager(this);
@@ -106,26 +120,16 @@ public class CratesPlugin extends NightPlugin {
 
         this.dataHandler.updateRewardLimits();
 
-        if (Version.withDialogs()) {
-            this.dialogs = new CrateDialogs(this);
-            this.dialogs.setup();
-        }
-
         if (Plugins.hasPlaceholderAPI()) {
             PlaceholderHook.setup(this);
         }
 
-        if (Config.HOLOGRAMS_ENABLED.get()) {
-            this.hologramManager = new HologramManager(this);
-            this.hologramManager.setup();
-        }
-
         this.loadCommands();
+        this.proceedAddons(CratesAddon::onLoad);
     }
 
     @Override
     public void disable() {
-        if (this.dialogs != null) this.dialogs.shutdown();
         if (this.editorManager != null) this.editorManager.shutdown();
         if (this.openingManager != null) this.openingManager.shutdown();
         if (this.uuidAntiDupeManager != null) this.uuidAntiDupeManager.shutdown();
@@ -136,6 +140,7 @@ public class CratesPlugin extends NightPlugin {
         if (this.dataManager != null) this.dataManager.shutdown();
         if (this.dataHandler != null) this.dataHandler.shutdown();
         if (this.redisSyncManager != null) this.redisSyncManager.shutdown();
+        if (this.dialogRegistry != null) this.dialogRegistry.clear();
 
         if (Plugins.hasPlaceholderAPI()) {
             PlaceholderHook.shutdown();
@@ -150,12 +155,6 @@ public class CratesPlugin extends NightPlugin {
         super.onShutdown();
         Keys.clear();
         CratesAPI.clear();
-    }
-
-    private void loadEngine() {
-        ProviderRegistry.load();
-        CratesRegistries.load(this);
-        this.proceedAddons(CratesAddon::onInit);
     }
 
     private void loadCommands() {
@@ -173,10 +172,16 @@ public class CratesPlugin extends NightPlugin {
         for (CratesAddon addon : this.addons) {
             try {
                 action.accept(addon);
-            } catch (Exception e) {
+            }
+            catch (Exception e) {
                 this.warn("Addon error: " + e.getMessage());
             }
         }
+    }
+
+    @NotNull
+    public List<CratesAddon> getAddons() {
+        return this.addons;
     }
 
     public boolean hasHolograms() {

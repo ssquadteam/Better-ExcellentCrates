@@ -15,13 +15,14 @@ import su.nightexpress.excellentcrates.crate.impl.Crate;
 import su.nightexpress.excellentcrates.crate.impl.CrateSource;
 import su.nightexpress.excellentcrates.data.crate.GlobalCrateData;
 import su.nightexpress.excellentcrates.data.crate.UserCrateData;
-import su.nightexpress.excellentcrates.user.CrateUser;
 import su.nightexpress.nightcore.util.Players;
+import su.nightexpress.nightcore.util.placeholder.Replacer;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public abstract class AbstractOpening implements Opening {
 
@@ -110,14 +111,11 @@ public abstract class AbstractOpening implements Opening {
                 this.cost.refundAll(this.player);
             }
             if (this.source.getItem() != null) {
-                // Ensure refund item is added on the player's region thread (Folia-safe)
                 this.plugin.getFoliaScheduler().runAtEntity(this.player, () -> {
                     Players.addItem(this.player, this.crate.getItemStack());
                 });
             }
             this.releaseCrossServerCooldown();
-        } else {
-            this.getRewards().forEach(reward -> this.plugin.getCrateManager().giveReward(this.player, reward));
         }
 
         this.plugin.getOpeningManager().removeOpening(this.getPlayer());
@@ -125,34 +123,51 @@ public abstract class AbstractOpening implements Opening {
         if (this.isCompleted()) {
             this.onComplete();
 
-            // Fetch user data off-thread to avoid blocking the main thread on DB I/O
-            plugin.getUserManager().getOrFetchAsync(player.getUniqueId()).thenAccept(user -> {
+            this.plugin.getUserManager().getOrFetchAsync(this.player.getUniqueId()).thenAccept(user -> {
                 if (user == null) return;
 
-                // Switch back to the main thread to modify Bukkit-related state safely
-                plugin.getFoliaScheduler().runNextTick(() -> {
+                this.plugin.getFoliaScheduler().runNextTick(() -> {
                     UserCrateData userData = user.getCrateData(this.crate);
-                    GlobalCrateData globalData = plugin.getDataManager().getCrateDataOrCreate(this.crate);
+                    GlobalCrateData globalData = this.plugin.getDataManager().getCrateDataOrCreate(this.crate);
 
                     userData.addOpenings(1);
                     globalData.setLatestOpener(this.player);
-                    globalData.setSaveRequired(true);
+                    globalData.setDirty(true);
                     this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishCrateData(globalData));
 
-                    if (crate.hasOpenCooldown() && !crate.hasCooldownBypassPermission(player)) {
-                        userData.setCooldown(crate.getOpenCooldown());
-                        if (Config.isCrossServerCooldownCrate(crate.getId())) {
-                            this.plugin.getRedisSyncManager().ifPresent(sync -> sync.refreshCrateCooldown(player.getUniqueId(), crate.getId(), crate.getOpenCooldown()));
+                    this.getRewards().forEach(reward -> reward.give(this.player));
+
+                    if (this.crate.isOpeningCooldownEnabled()) {
+                        userData.addOpeningStreak(1);
+
+                        if (!userData.isOnCooldown() && !this.crate.hasCooldownBypassPermission(this.player)) {
+                            userData.setCooldown(this.crate.getOpeningCooldownTime());
+                            if (Config.isCrossServerCooldownCrate(this.crate.getId())) {
+                                this.plugin.getRedisSyncManager().ifPresent(sync ->
+                                    sync.refreshCrateCooldown(this.player.getUniqueId(), this.crate.getId(), this.crate.getOpeningCooldownTime())
+                                );
+                            }
                         }
                     }
 
-                    if (crate.hasMilestones()) {
+                    if (this.crate.hasMilestones()) {
                         userData.addMilestones(1);
-                        plugin.getCrateManager().triggerMilestones(player, crate, userData.getMilestone());
-                        if (userData.getMilestone() >= crate.getMaxMilestone() && crate.isMilestonesRepeatable()) {
+                        this.plugin.getCrateManager().triggerMilestones(this.player, this.crate, userData.getMilestone());
+                        if (userData.getMilestone() >= this.crate.getMaxMilestone() && this.crate.isMilestonesRepeatable()) {
                             userData.setMilestone(0);
                         }
                     }
+
+                    Lang.CRATE_OPEN_RESULT_INFO.message().send(this.player, replacer -> replacer
+                        .replace(this.crate.replacePlaceholders())
+                        .replace(Placeholders.GENERIC_REWARDS, this.rewards.stream()
+                            .map(reward -> reward.replacePlaceholders().apply(Lang.CRATE_OPEN_RESULT_REWARD.text()))
+                            .collect(Collectors.joining(", "))
+                        )
+                    );
+
+                    List<String> postOpenCommands = Replacer.create().replace(this.crate.replacePlaceholders()).apply(this.crate.getPostOpenCommands());
+                    Players.dispatchCommands(this.player, postOpenCommands);
 
                     this.plugin.getUserManager().save(user);
                     this.plugin.getRedisSyncManager().ifPresent(sync -> sync.publishUser(user));
@@ -183,11 +198,13 @@ public abstract class AbstractOpening implements Opening {
                 optional.ifPresent(hologram -> {
                     try {
                         hologramClass.getMethod("refreshHologram", Player.class).invoke(hologram, this.player);
-                    } catch (ReflectiveOperationException exception) {
+                    }
+                    catch (ReflectiveOperationException exception) {
                         this.warnFancyHologramRefresh(exception);
                     }
                 });
-            } catch (ReflectiveOperationException | LinkageError exception) {
+            }
+            catch (ReflectiveOperationException | LinkageError exception) {
                 this.warnFancyHologramRefresh(exception);
             }
         });
@@ -201,7 +218,7 @@ public abstract class AbstractOpening implements Opening {
     }
 
     private void releaseCrossServerCooldown() {
-        if (!this.crate.hasOpenCooldown() || this.crate.getOpenCooldown() <= 0L || !Config.isCrossServerCooldownCrate(this.crate.getId())) {
+        if (!this.crate.hasOpenCooldown() || this.crate.getOpeningCooldownTime() <= 0 || !Config.isCrossServerCooldownCrate(this.crate.getId())) {
             return;
         }
 

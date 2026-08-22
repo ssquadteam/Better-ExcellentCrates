@@ -27,6 +27,7 @@ import su.nightexpress.nightcore.util.ItemUtil;
 import su.nightexpress.nightcore.util.Lists;
 import su.nightexpress.nightcore.util.bukkit.NightItem;
 import su.nightexpress.nightcore.util.placeholder.Replacer;
+import su.nightexpress.excellentcrates.util.FoliaTasks;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -164,7 +165,7 @@ public class PreviewMenu extends LinkedMenu<CratesPlugin, CrateSource> implement
 
             Player player = viewer.getPlayer();
 
-            this.runNextTick(() -> {
+            FoliaTasks.runAtPlayer(plugin, player, () -> {
                 player.closeInventory();
                 plugin.getCrateManager().interactCrate(player, source.getCrate(), InteractType.CRATE_OPEN, source.getItem(), source.getBlock());
             });
@@ -185,7 +186,7 @@ public class PreviewMenu extends LinkedMenu<CratesPlugin, CrateSource> implement
             .setPriority(10)
             .setSlots(4)
             .setHandler(new ItemHandler("milestones", (viewer, event) -> {
-                this.runNextTick(() -> plugin.getCrateManager().openMilestones(viewer.getPlayer(), this.getLink(viewer)));
+                FoliaTasks.runAtPlayer(plugin, viewer.getPlayer(), () -> plugin.getCrateManager().openMilestones(viewer.getPlayer(), this.getLink(viewer)));
             }, ItemOptions.builder().setVisibilityPolicy(viewer -> this.getLink(viewer).getCrate().hasMilestones()).build()))
         );
 
